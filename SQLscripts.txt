@@ -1,0 +1,136 @@
+USE [master]
+GO
+
+/****** Object:  Database [Navin_Personal]    Script Date: 21-04-2026 07:00:16 ******/
+CREATE DATABASE [Navin_Personal]
+ CONTAINMENT = NONE
+ ON  PRIMARY 
+( NAME = N'Navin_Personal', FILENAME = N'C:\Program Files\Microsoft SQL Server\MSSQL16.SQLEXPRESS\MSSQL\DATA\Navin_Personal.mdf' , SIZE = 1843200KB , MAXSIZE = UNLIMITED, FILEGROWTH = 65536KB )
+ LOG ON 
+( NAME = N'Navin_Personal_log', FILENAME = N'C:\Program Files\Microsoft SQL Server\MSSQL16.SQLEXPRESS\MSSQL\DATA\Navin_Personal_log.ldf' , SIZE = 335872KB , MAXSIZE = 2048GB , FILEGROWTH = 65536KB )
+ WITH CATALOG_COLLATION = DATABASE_DEFAULT, LEDGER = OFF
+GO
+
+
+USE [Navin_Personal]
+GO
+
+/****** Object:  Table [dbo].[FNO_STOCKS_Sectors_Master_Refined_NEW]    Script Date: 21-04-2026 07:02:58 ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+CREATE TABLE [dbo].[FNO_STOCKS_Sectors_Master_Refined_NEW](
+	[StockName] [nvarchar](255) NULL,
+	[Symbol] [varchar](25) NOT NULL,
+	[Sector] [nvarchar](255) NULL,
+	[SubSector] [nvarchar](255) NULL,
+	[Industry] [nvarchar](255) NULL,
+	[Segment] [nvarchar](255) NULL,
+	[Lot_Size] [int] NULL,
+	[IsNifty50Stock] [bit] NULL,
+	[IsBankNiftyStock] [bit] NULL,
+	[IsNiftyMidCapSelectStock] [bit] NULL,
+	[IsFinNiftyStock] [bit] NULL,
+	[UpdatedDate] [datetime] NOT NULL,
+	[Type] [nchar](10) NULL,
+	[IsNiftyNext50Stock] [bit] NULL,
+ CONSTRAINT [PK__FNO_STOC_Master_NEW] PRIMARY KEY CLUSTERED 
+(
+	[Symbol] ASC,
+	[UpdatedDate] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
+) ON [PRIMARY]
+GO
+
+
+USE [Navin_Personal]
+GO
+
+/****** Object:  Table [dbo].[Options_FnO_BhavCopy_History_Transformed_New]    Script Date: 21-04-2026 07:04:20 ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+CREATE TABLE [dbo].[Options_FnO_BhavCopy_History_Transformed_New](
+	[SnapShotDate] [datetime] NOT NULL,
+	[CONTRACT_D] [varchar](50) NOT NULL,
+	[SYMBOL] [varchar](25) NOT NULL,
+	[InstrumentType] [varchar](25) NOT NULL,
+	[EXPIRY_DATE] [datetime] NOT NULL,
+	[OPTION_TYPE] [varchar](2) NOT NULL,
+	[STRIKE_PRICE] [float] NOT NULL,
+	[PREVIOUS_S] [float] NULL,
+	[OPEN_PRICE] [float] NULL,
+	[HIGH_PRICE] [float] NULL,
+	[LOW_PRICE] [float] NULL,
+	[CLOSE_PRIC] [float] NULL,
+	[SETTLEMENT] [float] NULL,
+	[NET_CHANGE] [float] NULL,
+	[OI_NO_CON] [float] NULL,
+	[TRADED_QUA] [float] NULL,
+	[TRD_NO_CON] [float] NULL,
+	[UNDRLNG_ST] [float] NULL,
+	[NOTIONAL_V] [float] NULL,
+	[PREMIUM_TR] [float] NULL,
+ CONSTRAINT [PK_Options_FnO_BhavCopy_History_Transformed_New] PRIMARY KEY CLUSTERED 
+(
+	[SnapShotDate] ASC,
+	[CONTRACT_D] ASC,
+	[SYMBOL] ASC,
+	[InstrumentType] ASC,
+	[EXPIRY_DATE] ASC,
+	[OPTION_TYPE] ASC,
+	[STRIKE_PRICE] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
+) ON [PRIMARY]
+GO
+
+
+
+
+
+
+USE [Navin_Personal]
+GO
+
+/****** Object:  Table [dbo].[FUTURES_FNO_BhavCopy_History_Transformed_New]    Script Date: 21-04-2026 07:01:07 ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+CREATE TABLE [dbo].[FUTURES_FNO_BhavCopy_History_Transformed_New](
+	[SnapShotDate] [datetime] NOT NULL,
+	[CONTRACT_D] [varchar](50) NOT NULL,
+	[SYMBOL] [varchar](25) NOT NULL,
+	[INSTRUMENTTYPE] [varchar](10) NOT NULL,
+	[EXPIRY_DATE] [datetime] NOT NULL,
+	[PREVIOUS_S] [float] NULL,
+	[OPEN_PRICE] [float] NULL,
+	[HIGH_PRICE] [float] NULL,
+	[LOW_PRICE] [float] NULL,
+	[CLOSE_PRIC] [float] NULL,
+	[SETTLEMENT] [float] NULL,
+	[NET_CHANGE] [float] NULL,
+	[OI_NO_CON] [float] NULL,
+	[TRADED_QUA] [float] NULL,
+	[TRD_NO_CON] [float] NULL,
+	[TRADED_VAL] [float] NULL,
+ CONSTRAINT [PK_FUTURES_FNO_BhavCopy_History_Transformed_New] PRIMARY KEY CLUSTERED 
+(
+	[SnapShotDate] ASC,
+	[CONTRACT_D] ASC,
+	[SYMBOL] ASC,
+	[INSTRUMENTTYPE] ASC,
+	[EXPIRY_DATE] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
+) ON [PRIMARY]
+GO
+
+
