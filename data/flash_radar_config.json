@@ -1,0 +1,10 @@
+{
+  "timeframe": "15m",
+  "scan_interval_sec": 900,
+  "min_conviction_score": 75,
+  "enable_popups": true,
+  "enable_sound": true,
+  "target_rr_ratio": "1:2.5",
+  "active_universe": "All Markets (Cash + FNO + MCX)",
+  "max_results_per_category": 10
+}

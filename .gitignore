@@ -1,22 +1,67 @@
-# Python
+# Python Environment & Cache
 __pycache__/
 *.py[cod]
 *$py.class
 venv/
 env/
+ENV/
+.venv/
 .env
 
-# Project Specific
-.gemini/
-*.db
-*.log
+# Local Safety Backups & Scratch Work
+_Safety_Backups/
 scratch/
 scratch_*.py
+gemini-code-*.py
+test_offset_*.py
+fix_*.py
+main_from_head*.py
+main_restored*.py
+main_extracted*.py
+main_reconstructed_full.py
+cash_stocks_frame_clean.py
+cash_stocks_frame_perfect.py
+main_backup*.py
+db_utils_backup*.py
+market_api_backup*.py
+patch_master_data.py
+patch_sectors.py
+patch_trade_proj.py
+*.bak
 
-# IDEs
+# Temporary Dumps & Task Logs
+ext_*.txt
+extracted_*.txt
+reconstructed_*.txt
+step_*.json
+*.log
+*.db
+*.sqlite3
+data/flash_signals_journal.json
+
+# Temporary Office Lock Files & Unrelated Courseware
+~$*
+*.pptx
+*.docx
+Student_GenAI_Guide.*
+Demo_Manufacturing_AI/
+Simplilearn content _  AI in MFG/
+Presntations and python scripts/
+NEW_FormatPPT.py
+GEXCEL.py
+generate*.py
+pptx_generation_script.py
+Sample_Codes_Mfg.py
+2026-04-01
+
+# Heavy Raw Data Files & Trackers
+*.xlsx
+data/Rollover Files/
+fao_participant_vol_*.csv
+
+# Local IDEs & System Files
+.gemini/
 .vscode/
 .idea/
-
-# OS
 .DS_Store
 Thumbs.db
