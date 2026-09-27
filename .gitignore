@@ -38,6 +38,8 @@ step_*.json
 *.db
 *.sqlite3
 data/flash_signals_journal.json
+data/live_ltp_cache.json
+*.pdf
 
 # Temporary Office Lock Files & Unrelated Courseware
 ~$*

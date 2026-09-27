@@ -1,3 +1,14 @@
+"""
+================================================================================
+HFT PRO TERMINAL - ENTERPRISE QUANTITATIVE TRADING PLATFORM
+================================================================================
+Application Core: Institutional Analytics, Deep Market Intelligence, Smart Money Stance,
+Derivative Rollover, Relative Strength Comparison, Multi-Broker Order Reconciliation & Journal.
+Version: 3.0.0 (Enterprise Release)
+Architecture: Decoupled Multi-Tier Architecture (CustomTkinter + SQL Server Engine)
+================================================================================
+"""
+
 import ui_thread_safe
 
 def get_tksheet_event_row(event, sheet):
@@ -43,8 +54,11 @@ from us_stocks_module import USStocksFrame
 from smart_money_stance import SmartMoneyStanceFrame
 from rollover_tab import RolloverIntelligenceTab
 from comparison_ui import StockIndexComparisonFrame
+from top_picks_ui import TopPicksFrame
 from market_participants_ui import MarketParticipantsFrame
 from flash_radar_ui import FlashRadarTab
+from trading_journal_module import ModernTradingJournalFrame
+from trade_orders_analysis_module import TradeOrdersAnalysisFrame
 import customtkinter as ctk
 
 from tkinter import ttk
@@ -2243,123 +2257,8 @@ class GlobalMarketFrame(ctk.CTkFrame):
             add_items(self.news_geo_frame, news_dict.get('Geopolitics', []), "No Geopolitics news available at this moment.")
 
 
-class TopPicksFrame(ctk.CTkFrame):
+# TopPicksFrame is now imported from top_picks_ui.py (Live AI Scanner with Multi-Horizon Attribution)
 
-    def __init__(self, master, mapi):
-
-        super().__init__(master, corner_radius=15)
-
-        self.mapi = mapi
-
-        self.grid_rowconfigure(1, weight=1)
-
-        self.grid_columnconfigure(0, weight=1)
-
-        header_frame = ctk.CTkFrame(self, fg_color="transparent")
-
-        header_frame.grid(row=0, column=0, pady=20)
-
-        ctk.CTkLabel(header_frame, text="Today's Top 10 Picks (Live AI Scanner)", font=ctk.CTkFont(size=28, weight="bold")).pack(side="left", padx=10)
-
-        ctk.CTkButton(header_frame, text="🔄 Refresh Scanner", command=self.start_bg_load).pack(side="left", padx=10)
-
-        
-
-        self.tabs = ctk.CTkTabview(self, corner_radius=10)
-
-        self.tabs.grid(row=1, column=0, sticky="nsew", padx=30, pady=10)
-
-        
-
-        self.tabs.add("Indian Market")
-
-        self.tabs.add("Global Market")
-
-        
-
-        self.in_tree = self.create_tree(self.tabs.tab("Indian Market"))
-
-        self.gl_tree = self.create_tree(self.tabs.tab("Global Market"))
-
-        
-
-        self.status_lbl = ctk.CTkLabel(self, text="Scanning markets... this may take 10-15 seconds.", font=ctk.CTkFont(size=14), text_color="#FFB300")
-
-        self.status_lbl.grid(row=2, column=0, pady=10)
-
-        
-
-        self._data_ready = False
-        self.df_in = None
-        self.df_gl = None
-        self.after(500, self.start_bg_load)
-
-
-
-    def create_tree(self, parent):
-
-        cols = ("Symbol", "Price", "% Change", "Score", "Justification")
-
-        tree = ttk.Treeview(parent, columns=cols, show="headings")
-
-        for col in cols: tree.heading(col, text=col)
-
-        
-
-        tree.column("Symbol", width=120)
-
-        tree.column("Price", width=100, anchor="e")
-
-        tree.column("% Change", width=100, anchor="e")
-
-        tree.column("Score", width=100, anchor="center")
-
-        tree.column("Justification", width=500)
-
-        
-
-        tree.pack(fill="both", expand=True, padx=10, pady=10)
-
-        return tree
-
-
-
-    def start_bg_load(self):
-        self.status_lbl.configure(text="Scanning markets... this may take a few seconds.", text_color="#FFB300")
-        for item in self.in_tree.get_children(): self.in_tree.delete(item)
-        for item in self.gl_tree.get_children(): self.gl_tree.delete(item)
-        threading.Thread(target=self.load_data, daemon=True).start()
-
-    def load_data(self):
-        try:
-            df_in = self.mapi.get_top_picks("Indian")
-            df_gl = self.mapi.get_top_picks("Global")
-            self.after(0, self._render_trees, df_in, df_gl)
-        except Exception as e:
-            print("Error in TopPicksFrame load_data:", e)
-
-    def _render_trees(self, df_in, df_gl):
-        try:
-            if hasattr(self, "winfo_exists") and not self.winfo_exists():
-                return
-            if hasattr(self, "in_tree") and self.in_tree.winfo_exists():
-                for item in self.in_tree.get_children(): self.in_tree.delete(item)
-                if df_in is not None and not df_in.empty:
-                    for _, r in df_in.iterrows():
-                        self.in_tree.insert("", "end", values=(
-                            r.get("Symbol", ""), r.get("Price", ""), r.get("% Change", ""), r.get("Score", ""), r.get("Justification", "")
-                        ))
-            if hasattr(self, "gl_tree") and self.gl_tree.winfo_exists():
-                for item in self.gl_tree.get_children(): self.gl_tree.delete(item)
-                if df_gl is not None and not df_gl.empty:
-                    for _, r in df_gl.iterrows():
-                        self.gl_tree.insert("", "end", values=(
-                            r.get("Symbol", ""), r.get("Price", ""), r.get("% Change", ""), r.get("Score", ""), r.get("Justification", "")
-                        ))
-            if hasattr(self, "status_lbl") and self.status_lbl.winfo_exists():
-                self.status_lbl.configure(text="✓ Top 10 Picks scan completed successfully.", text_color="#00E676")
-        except Exception as err:
-            print("Error rendering top picks trees:", err)
 
 
 class FuturesAnalysisFrame(ctk.CTkFrame):
@@ -4756,12 +4655,28 @@ class HedgeFundEngineFrame(ctk.CTkFrame):
                 p_est = 1200.0 + abs(hash(symbol)) % 2500
                 live_data = {'Close': p_est, 'High': p_est + 25, 'Low': p_est - 20, 'Open': p_est - 5, 'Volume': 1500000, 'RSI': 62.5, 'MACD': 14.2, 'MACD_Signal': 9.8, 'ATR': p_est * 0.02}
 
-            price = live_data.get('Close', 1000.0)
-            atr = live_data.get('ATR', price * 0.02)
-            rsi = live_data.get('RSI', 58.0)
-            macd = live_data.get('MACD', 5.0)
-            macd_sig = live_data.get('MACD_Signal', 3.0)
-            vwap = (live_data.get('High', price) + live_data.get('Low', price) + price) / 3
+            raw_price = live_data.get('Close', 1000.0)
+            price = float(raw_price) if (pd.notna(raw_price) and float(raw_price) > 0) else 1000.0
+
+            raw_atr = live_data.get('ATR', price * 0.02)
+            atr = float(raw_atr) if (pd.notna(raw_atr) and float(raw_atr) > 0) else (price * 0.02)
+
+            raw_rsi = live_data.get('RSI', 58.0)
+            rsi = float(raw_rsi) if pd.notna(raw_rsi) else 58.0
+
+            raw_macd = live_data.get('MACD', 5.0)
+            macd = float(raw_macd) if pd.notna(raw_macd) else 5.0
+
+            raw_sig = live_data.get('MACD_Signal', 3.0)
+            macd_sig = float(raw_sig) if pd.notna(raw_sig) else 3.0
+
+            delivery_pct = float(delivery_pct) if pd.notna(delivery_pct) else 0.0
+
+            raw_hi = live_data.get('High', price)
+            raw_lo = live_data.get('Low', price)
+            hi = float(raw_hi) if pd.notna(raw_hi) else price
+            lo = float(raw_lo) if pd.notna(raw_lo) else price
+            vwap = (hi + lo + price) / 3
 
             sig = "BUY ▲" if rsi > 50 and macd > macd_sig else "SELL ▼" if rsi < 45 else "ACCUM ▲"
             badge_bg = "#1B5E20" if "BUY" in sig or "ACCUM" in sig else "#B71C1C" if "SELL" in sig else "#FFA500"
@@ -6258,12 +6173,13 @@ class App(ctk.CTk):
         self.rollover_btn = add_button("  Rollover Intelligence", self.show_rollover)
         self.participants_btn = add_button("  Market Participants", self.show_participants)
         self.journal_btn = add_button("  My Trading Journal", self.show_journal)
+        self.orders_analysis_btn = add_button("  My Trade Orders Analysis", self.show_orders_analysis)
 
         self._all_nav_btns = [
             self.flash_radar_btn, self.global_btn, self.picks_btn, self.comparison_btn, self.futures_btn, self.options_btn,
             self.trade_proj_btn, self.predict_btn, self.btst_btn, self.cash_btn,
             self.dow_btn, self.earnings_btn, self.us_stocks_btn, self.smart_money_btn,
-            self.rollover_btn, self.participants_btn, self.journal_btn
+            self.rollover_btn, self.participants_btn, self.journal_btn, self.orders_analysis_btn
         ]
 
         # Theme Switcher
@@ -6276,7 +6192,7 @@ class App(ctk.CTk):
         # Frame Initializations
         self.flash_radar_frame = FlashRadarTab(self, self.db, self.mapi)
         self.global_frame = GlobalMarketFrame(self, self.mapi)
-        self.picks_frame = TopPicksFrame(self, self.mapi)
+        self.picks_frame = TopPicksFrame(self, self.mapi, self.db)
         self.comparison_frame = StockIndexComparisonFrame(self, self.mapi, self.db)
         self.futures_frame = FuturesAnalysisFrame(self, self.db, self.mapi)
         self.options_frame = OptionsAnalysisFrame(self, self.db, self.mapi)
@@ -6288,7 +6204,8 @@ class App(ctk.CTk):
         self.smart_money_frame = SmartMoneyStanceFrame(self)
         self.rollover_frame = RolloverIntelligenceTab(self, self.db)
         self.participants_frame = MarketParticipantsFrame(self)
-        self.journal_frame = TradingJournalFrame(self)
+        self.journal_frame = ModernTradingJournalFrame(self)
+        self.orders_analysis_frame = TradeOrdersAnalysisFrame(self)
 
         # Persistent Footer Status & Live Clock Bar (Row 1)
         self.grid_rowconfigure(1, weight=0)
@@ -6371,7 +6288,7 @@ class App(ctk.CTk):
         for frame_attr in ['flash_radar_frame', 'global_frame', 'picks_frame', 'futures_frame', 'options_frame', 
                            'trade_proj_frame', 'predict_frame', 'cash_frame', 'earnings_frame',
                            'us_stocks_frame', 'smart_money_frame', 'rollover_frame',
-                           'participants_frame', 'journal_frame', 'comparison_frame']:
+                           'participants_frame', 'journal_frame', 'orders_analysis_frame', 'comparison_frame']:
             if hasattr(self, frame_attr):
                 getattr(self, frame_attr).grid_forget()
 
@@ -6458,6 +6375,11 @@ class App(ctk.CTk):
         self.hide_all_frames()
         self._highlight_active_button(getattr(self, 'journal_btn', None))
         self.journal_frame.grid(row=0, column=1, sticky="nsew", padx=20, pady=20)
+
+    def show_orders_analysis(self):
+        self.hide_all_frames()
+        self._highlight_active_button(getattr(self, 'orders_analysis_btn', None))
+        self.orders_analysis_frame.grid(row=0, column=1, sticky="nsew", padx=20, pady=20)
 
     def open_btst_search(self):
         AdvancedBacktestSearchWindow(self, self.db)

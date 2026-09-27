@@ -599,7 +599,8 @@ class MarketParticipantsFrame(ctk.CTkFrame):
             
             self._safe_dispatch(lambda: self._on_data_loaded(dates, df_pos, actual_date, df_fii, df_series, csi_score, just_text, mom_dict, idx_rows, stock_rows, trap_text))
         except Exception as e:
-            self._safe_dispatch(lambda: self._on_error(f"Failed to load participant data: {e}"))
+            err_msg = str(e)
+            self._safe_dispatch(lambda msg=err_msg: self._on_error(f"Failed to load participant data: {msg}"))
 
     def _compute_smart_money_data(self):
         q = """
@@ -1197,7 +1198,8 @@ class MarketParticipantsFrame(ctk.CTkFrame):
                 run_import()
                 self._safe_dispatch(self._on_ingest_done)
             except Exception as e:
-                self._safe_dispatch(lambda: self._on_error(f"Ingestion error: {e}"))
+                err_msg = str(e)
+                self._safe_dispatch(lambda msg=err_msg: self._on_error(f"Ingestion error: {msg}"))
         threading.Thread(target=bg, daemon=True).start()
 
     def _on_ingest_done(self):

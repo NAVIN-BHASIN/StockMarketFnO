@@ -193,7 +193,7 @@ class PerformanceMathTab(ctk.CTkFrame):
         self.dow_sheet.pack(fill="both", expand=True, padx=5, pady=5)
 
         self.active_filters = {'sector': 'All', 'industry': 'All', 'cap': 'All', 'index_filter': 'All', 'search': ''}
-        self.after(200, self.load_data)
+        # Lazy load on view activation or user interaction
 
     def sync_filters_and_load(self, search="", cap="All", sector="All", industry="All", index_filter="All"):
         self.active_filters = {
@@ -227,7 +227,7 @@ class PerformanceMathTab(ctk.CTkFrame):
                 df = self.db.get_cash_stocks_matrix(sector=sec, industry=ind, cap=cap, index_filter=idx_f, search=search)
 
             if not df.empty and 'Symbol' in df.columns:
-                symbols = [str(s).replace('.NS', '').strip() for s in df['Symbol'].head(100).tolist()]
+                symbols = [str(s).replace('.NS', '').strip() for s in df['Symbol'].head(30).tolist()]
             else:
                 symbols = ["RELIANCE", "TCS", "HDFCBANK", "INFY", "ICICIBANK", "BHARTIARTL", "LT", "ITC", "TATAMOTORS", "SUNPHARMA", "DIXON", "POLYCAB", "KAYNES", "BAJFINANCE"]
 

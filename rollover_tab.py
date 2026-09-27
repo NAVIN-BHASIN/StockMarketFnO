@@ -265,6 +265,7 @@ class RolloverIntelligenceTab(ctk.CTkFrame):
                 self.after(0, lambda: messagebox.showinfo("Success", f"Imported {len(data_to_insert)} records for {report_date}"))
                 self.after(0, self.refresh_all)
         except Exception as e:
-            self.after(0, lambda: messagebox.showerror("Error", f"Failed to import PDF: {str(e)}"))
+            err_msg = str(e)
+            self.after(0, lambda msg=err_msg: messagebox.showerror("Error", f"Failed to import PDF: {msg}"))
         finally:
             self.after(0, lambda: self.import_btn.configure(text=" Import New Axis PDF", state="normal"))

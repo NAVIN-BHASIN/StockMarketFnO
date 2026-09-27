@@ -793,7 +793,8 @@ class SmartMoneyStanceFrame(ctk.CTkFrame):
                 run_import()
                 self.after(0, self.on_ingestion_complete)
             except Exception as e:
-                self.after(0, lambda: self._on_error(f"Ingestion failed: {e}"))
+                err_msg = str(e)
+                self.after(0, lambda msg=err_msg: self._on_error(f"Ingestion failed: {msg}"))
                 
         threading.Thread(target=bg_run, daemon=True).start()
         
@@ -982,7 +983,8 @@ class SmartMoneyStanceFrame(ctk.CTkFrame):
         except Exception as e:
             try:
                 if self.winfo_exists():
-                    self.after(0, lambda: self._on_error(str(e)))
+                    err_msg = str(e)
+                    self.after(0, lambda msg=err_msg: self._on_error(msg))
             except Exception:
                 pass
             
