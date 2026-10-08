@@ -61,6 +61,7 @@ from trading_journal_module import ModernTradingJournalFrame
 from trade_orders_analysis_module import TradeOrdersAnalysisFrame
 from closing_auction_ui import ClosingAuctionAnalysisFrame
 from ipo_analysis_ui import IPOAnalysisFrame
+from market_crashes_growth_ui import MarketCrashesGrowthFrame
 import customtkinter as ctk
 
 from tkinter import ttk
@@ -6118,82 +6119,158 @@ class App(ctk.CTk):
 
         
 
-        self.grid_rowconfigure(0, weight=1)
+        self.grid_rowconfigure(0, weight=0)  # Top Master Domain Ribbon
+        self.grid_rowconfigure(1, weight=0)  # Contextual Sub-Navigation Bar
+        self.grid_rowconfigure(2, weight=1)  # Full-Width Workspace Viewport
+        self.grid_rowconfigure(3, weight=0)  # Persistent Footer Status Bar
+        self.grid_columnconfigure(0, weight=1)
 
-        self.grid_columnconfigure(1, weight=1)
+        # Master Domains Configuration
+        self._nav_domains = {
+            "radar": {
+                "label": "⚡ LIVE RADAR",
+                "items": [
+                    ("⚡ 5-Min FLASH Radar", self.show_flash_radar, "show_flash_radar")
+                ]
+            },
+            "markets": {
+                "label": "🌐 MARKETS & PICKS",
+                "items": [
+                    ("Global Markets", self.show_global, "show_global"),
+                    ("Top 10 Picks", self.show_picks, "show_picks"),
+                    ("⚖️ Compare Assets", self.show_comparison, "show_comparison")
+                ]
+            },
+            "fno": {
+                "label": "📊 F&O DERIVATIVES",
+                "items": [
+                    ("Futures Intelligence", self.show_futures, "show_futures"),
+                    ("Options Intelligence", self.show_options, "show_options"),
+                    ("Trade Projection Desk", self.show_trade_projection, "show_trade_projection"),
+                    ("HF Decision Engine", self.show_prediction, "show_prediction"),
+                    ("🔍 BTST / Date Search", self.open_btst_search, "open_btst_search"),
+                    ("🔔 Closing Auction Session", self.show_closing_auction, "show_closing_auction")
+                ]
+            },
+            "stocks": {
+                "label": "🏢 CASH & IPO",
+                "items": [
+                    ("Cash Stocks Analysis", self.show_cash, "show_cash"),
+                    ("🏛️ DOW Theory Analysis", self.show_dow_theory, "show_dow_theory"),
+                    ("Quarterly Results", self.show_earnings, "show_earnings"),
+                    ("🚀 IPO Analysis", self.show_ipo_analysis, "show_ipo_analysis")
+                ]
+            },
+            "deep_intel": {
+                "label": "🧠 DEEP INTELLIGENCE",
+                "items": [
+                    ("Smart Money Stance", self.show_smart_money, "show_smart_money"),
+                    ("Rollover Intelligence", self.show_rollover, "show_rollover"),
+                    ("Market Participants", self.show_participants, "show_participants")
+                ]
+            },
+            "desk": {
+                "label": "📔 TRADING DESK",
+                "items": [
+                    ("My Trading Journal", self.show_journal, "show_journal"),
+                    ("My Trade Orders Analysis", self.show_orders_analysis, "show_orders_analysis"),
+                    ("US Stocks Journal", self.show_us_stocks, "show_us_stocks")
+                ]
+            },
+            "learning": {
+                "label": "🎓 LEARNING VAULT",
+                "items": [
+                    ("📜 Crashes & Growth Vault", self.show_crashes_growth, "show_crashes_growth")
+                ]
+            }
+        }
 
-        
+        self.active_domain = "markets"
+        self.active_sub_key = "show_global"
+        self._domain_btns = {}
+        self._sub_pill_btns = {}
 
-        self.sidebar_frame = ctk.CTkFrame(self, width=260, corner_radius=0)
-        self.sidebar_frame.grid(row=0, column=0, sticky="nsew")
-        self.sidebar_frame.grid_rowconfigure(0, weight=1)
-        self.sidebar_frame.grid_columnconfigure(0, weight=1)
+        # =========================================================================
+        # 1. TOP MASTER COMMAND RIBBON (Row 0)
+        # =========================================================================
+        self.top_command_ribbon = ctk.CTkFrame(self, height=48, fg_color="#0b0f19", corner_radius=0)
+        self.top_command_ribbon.grid(row=0, column=0, sticky="ew")
+        self.top_command_ribbon.pack_propagate(False)
 
-        # Scrollable container for menu
-        self.menu_scroll = ctk.CTkScrollableFrame(self.sidebar_frame, label_text="HFT PRO TERMINAL", label_font=ctk.CTkFont(size=20, weight="bold"))
-        self.menu_scroll.pack(fill="both", expand=True, padx=5, pady=5)
+        # Brand & Status Badge (Left)
+        brand_frame = ctk.CTkFrame(self.top_command_ribbon, fg_color="transparent")
+        brand_frame.pack(side="left", padx=(15, 20), pady=6)
 
-        btn_font = ctk.CTkFont(size=14, weight="bold")
-        hdr_font = ctk.CTkFont(size=12, weight="bold")
+        ctk.CTkLabel(
+            brand_frame, 
+            text="⚡ HFT PRO TERMINAL", 
+            font=ctk.CTkFont(size=15, weight="bold"), 
+            text_color="#FFD54F"
+        ).pack(side="left")
 
-        def add_header(txt):
-            lbl = ctk.CTkLabel(self.menu_scroll, text=txt, font=hdr_font, text_color="#3a7ebf", anchor="w")
-            lbl.pack(fill="x", padx=10, pady=(15, 5))
+        ctk.CTkLabel(
+            brand_frame, 
+            text=" ● LIVE", 
+            font=ctk.CTkFont(size=11, weight="bold"), 
+            text_color="#00E676"
+        ).pack(side="left", padx=(5, 0))
 
-        def add_button(txt, cmd):
-            btn = ctk.CTkButton(self.menu_scroll, text=txt, font=btn_font, height=38, anchor="w", command=cmd, fg_color="transparent", hover_color="#2b5b84")
-            btn.pack(fill="x", padx=5, pady=2)
-            return btn
+        # Divider
+        ctk.CTkFrame(self.top_command_ribbon, width=1, height=26, fg_color="#1f293d").pack(side="left", padx=5, pady=10)
 
-        self._all_nav_btns = []
+        # Master Domain Tabs (Center)
+        tabs_container = ctk.CTkFrame(self.top_command_ribbon, fg_color="transparent")
+        tabs_container.pack(side="left", fill="both", expand=True, padx=5)
 
-        add_header("--- LIVE MARKET RADAR ---")
-        self.flash_radar_btn = add_button("  ⚡ 5-Min FLASH Radar", self.show_flash_radar)
+        for d_key, d_info in self._nav_domains.items():
+            btn = ctk.CTkButton(
+                tabs_container,
+                text=d_info["label"],
+                font=ctk.CTkFont(size=12, weight="bold"),
+                height=34,
+                corner_radius=6,
+                fg_color="transparent",
+                hover_color="#1e293b",
+                text_color="#94A3B8",
+                command=lambda k=d_key: self._on_domain_click(k)
+            )
+            btn.pack(side="left", padx=3, pady=7)
+            self._domain_btns[d_key] = btn
 
-        add_header("--- MAIN ---")
-        self.global_btn = add_button("  Global Markets", self.show_global)
-        self.picks_btn = add_button("  Top 10 Picks", self.show_picks)
-        self.comparison_btn = add_button("  ⚖️ Compare Assets", self.show_comparison)
+        # Theme & Quick Controls (Right)
+        right_controls = ctk.CTkFrame(self.top_command_ribbon, fg_color="transparent")
+        right_controls.pack(side="right", padx=(5, 15), pady=6)
 
-        add_header("--- FNO ANALYSIS ---")
-        self.futures_btn = add_button("  Futures Intelligence", self.show_futures)
-        self.options_btn = add_button("  Options Intelligence", self.show_options)
-        self.trade_proj_btn = add_button("  Trade Projection Desk", self.show_trade_projection)
-        self.predict_btn = add_button("  HF Decision Engine", self.show_prediction)
-        self.btst_btn = add_button("  BTST / Date Search", self.open_btst_search)
-        self.cas_btn = add_button("  🔔 Closing Auction Session - Analysis", self.show_closing_auction)
+        ctk.CTkLabel(
+            right_controls, 
+            text="🎨", 
+            font=ctk.CTkFont(size=13)
+        ).pack(side="left", padx=(0, 4))
 
-        add_header("--- STOCK ANALYSIS ---")
-        self.cash_btn = add_button("  Cash Stocks Analysis", self.show_cash)
-        self.dow_btn = add_button("  🏛️ DOW Theory Analysis", self.show_dow_theory)
-        self.earnings_btn = add_button("  Quarterly Results", self.show_earnings)
-        self.ipo_btn = add_button("  🚀 IPO Analysis", self.show_ipo_analysis)
+        self.appearance_menu = ctk.CTkOptionMenu(
+            right_controls, 
+            values=["Dark", "Light", "System"], 
+            width=90, 
+            height=28,
+            corner_radius=6,
+            command=self.change_appearance_mode, 
+            font=ctk.CTkFont(size=12)
+        )
+        self.appearance_menu.pack(side="left")
 
-        add_header("--- US STOCKS ---")
-        self.us_stocks_btn = add_button("  US Stocks Journal", self.show_us_stocks)
+        # =========================================================================
+        # 2. CONTEXTUAL SUB-NAVIGATION RIBBON (Row 1)
+        # =========================================================================
+        self.sub_nav_ribbon = ctk.CTkFrame(self, height=40, fg_color="#111827", corner_radius=0)
+        self.sub_nav_ribbon.grid(row=1, column=0, sticky="ew")
+        self.sub_nav_ribbon.pack_propagate(False)
 
-        add_header("--- DEEP INTELLIGENCE ---")
-        self.smart_money_btn = add_button("  Smart Money Stance", self.show_smart_money)
-        self.rollover_btn = add_button("  Rollover Intelligence", self.show_rollover)
-        self.participants_btn = add_button("  Market Participants", self.show_participants)
-        self.journal_btn = add_button("  My Trading Journal", self.show_journal)
-        self.orders_analysis_btn = add_button("  My Trade Orders Analysis", self.show_orders_analysis)
+        self.sub_nav_container = ctk.CTkFrame(self.sub_nav_ribbon, fg_color="transparent")
+        self.sub_nav_container.pack(side="left", fill="both", expand=True, padx=15, pady=4)
 
-        self._all_nav_btns = [
-            self.flash_radar_btn, self.global_btn, self.picks_btn, self.comparison_btn, self.futures_btn, self.options_btn,
-            self.trade_proj_btn, self.predict_btn, self.btst_btn, self.cas_btn, self.cash_btn,
-            self.dow_btn, self.earnings_btn, self.ipo_btn, self.us_stocks_btn, self.smart_money_btn,
-            self.rollover_btn, self.participants_btn, self.journal_btn, self.orders_analysis_btn
-        ]
-
-        # Theme Switcher
-        self.theme_label = ctk.CTkLabel(self.sidebar_frame, text="Theme:", font=ctk.CTkFont(size=14))
-        self.theme_label.pack(in_=self.sidebar_frame, padx=20, pady=(10, 0), anchor="w")
-
-        self.appearance_menu = ctk.CTkOptionMenu(self.sidebar_frame, values=["Dark", "Light", "System"], command=self.change_appearance_mode, font=ctk.CTkFont(size=14))
-        self.appearance_menu.pack(in_=self.sidebar_frame, padx=20, pady=(0, 15), fill="x")
-
-        # Frame Initializations
+        # =========================================================================
+        # 3. FRAME INITIALIZATIONS
+        # =========================================================================
         self.flash_radar_frame = FlashRadarTab(self, self.db, self.mapi)
         self.global_frame = GlobalMarketFrame(self, self.mapi)
         self.picks_frame = TopPicksFrame(self, self.mapi, self.db)
@@ -6212,11 +6289,13 @@ class App(ctk.CTk):
         self.participants_frame = MarketParticipantsFrame(self)
         self.journal_frame = ModernTradingJournalFrame(self)
         self.orders_analysis_frame = TradeOrdersAnalysisFrame(self)
+        self.crashes_growth_frame = MarketCrashesGrowthFrame(self, self.db, self.mapi)
 
-        # Persistent Footer Status & Live Clock Bar (Row 1)
-        self.grid_rowconfigure(1, weight=0)
+        # =========================================================================
+        # 4. PERSISTENT FOOTER STATUS BAR (Row 3)
+        # =========================================================================
         self.footer_bar = ctk.CTkFrame(self, height=28, fg_color="#090d16", corner_radius=0)
-        self.footer_bar.grid(row=1, column=0, columnspan=2, sticky="ew")
+        self.footer_bar.grid(row=3, column=0, sticky="ew")
 
         self.footer_status_lbl = ctk.CTkLabel(
             self.footer_bar,
@@ -6236,7 +6315,67 @@ class App(ctk.CTk):
         self._update_footer_clock()
         self.after(2000, self._update_footer_status)
 
+        # Initialize Default View
         self.show_global()
+
+    def _on_domain_click(self, domain_key: str):
+        domain_info = self._nav_domains.get(domain_key)
+        if domain_info and domain_info["items"]:
+            # Trigger first sub-module of selected domain
+            first_item = domain_info["items"][0]
+            first_cmd = first_item[1]
+            first_cmd()
+
+    def _update_nav_ui(self, domain_key: str, sub_key: str):
+        self.active_domain = domain_key
+        self.active_sub_key = sub_key
+
+        # 1. Update Master Domain Tab Highlights
+        for d_key, btn in self._domain_btns.items():
+            if d_key == domain_key:
+                btn.configure(
+                    fg_color="#1e293b",
+                    text_color="#FFD54F" if d_key == "radar" else "#38BDF8",
+                    hover_color="#334155"
+                )
+            else:
+                btn.configure(
+                    fg_color="transparent",
+                    text_color="#94A3B8",
+                    hover_color="#1e293b"
+                )
+
+        # 2. Re-render Sub-Navigation Ribbon Pills
+        for widget in self.sub_nav_container.winfo_children():
+            widget.destroy()
+
+        self._sub_pill_btns.clear()
+        domain_info = self._nav_domains.get(domain_key, {})
+        items = domain_info.get("items", [])
+
+        # Sub-domain indicator label
+        ctk.CTkLabel(
+            self.sub_nav_container,
+            text=f"{domain_info.get('label', '')} ➔",
+            font=ctk.CTkFont(size=11, weight="bold"),
+            text_color="gray50"
+        ).pack(side="left", padx=(5, 10))
+
+        for label, cmd, item_key in items:
+            is_active = (item_key == sub_key)
+            btn = ctk.CTkButton(
+                self.sub_nav_container,
+                text=label,
+                font=ctk.CTkFont(size=12, weight="bold" if is_active else "normal"),
+                height=28,
+                corner_radius=6,
+                fg_color="#0288D1" if is_active else "#1e293b",
+                hover_color="#039BE5" if is_active else "#334155",
+                text_color="#FFFFFF" if is_active else "#CBD5E1",
+                command=cmd
+            )
+            btn.pack(side="left", padx=4, pady=2)
+            self._sub_pill_btns[item_key] = btn
 
     def _update_footer_status(self):
         try:
@@ -6283,122 +6422,137 @@ class App(ctk.CTk):
                     update_sheets(child)
         update_sheets(self)
 
-    def _highlight_active_button(self, active_btn):
-        for btn in getattr(self, '_all_nav_btns', []):
-            if btn == active_btn:
-                btn.configure(fg_color="#1f538d")
-            else:
-                btn.configure(fg_color="transparent")
-
     def hide_all_frames(self):
-        for frame_attr in ['flash_radar_frame', 'global_frame', 'picks_frame', 'futures_frame', 'options_frame', 
-                           'trade_proj_frame', 'predict_frame', 'cash_frame', 'earnings_frame',
-                           'us_stocks_frame', 'smart_money_frame', 'rollover_frame',
-                           'participants_frame', 'journal_frame', 'orders_analysis_frame', 'comparison_frame',
-                           'cas_frame', 'ipo_frame']:
+        for frame_attr in [
+            'flash_radar_frame', 'global_frame', 'picks_frame', 'futures_frame', 'options_frame', 
+            'trade_proj_frame', 'predict_frame', 'cash_frame', 'earnings_frame',
+            'us_stocks_frame', 'smart_money_frame', 'rollover_frame',
+            'participants_frame', 'journal_frame', 'orders_analysis_frame', 'comparison_frame',
+            'cas_frame', 'ipo_frame', 'crashes_growth_frame'
+        ]:
             if hasattr(self, frame_attr):
                 getattr(self, frame_attr).grid_forget()
 
     def show_flash_radar(self):
         self.hide_all_frames()
-        self._highlight_active_button(getattr(self, 'flash_radar_btn', None))
+        self._update_nav_ui("radar", "show_flash_radar")
         if hasattr(self, 'flash_radar_frame'):
-            self.flash_radar_frame.grid(row=0, column=1, sticky="nsew", padx=20, pady=20)
+            self.flash_radar_frame.grid(row=2, column=0, sticky="nsew", padx=15, pady=10)
 
     def show_global(self):
         self.hide_all_frames()
-        self._highlight_active_button(getattr(self, 'global_btn', None))
-        self.global_frame.grid(row=0, column=1, sticky="nsew", padx=20, pady=20)
+        self._update_nav_ui("markets", "show_global")
+        if hasattr(self, 'global_frame'):
+            self.global_frame.grid(row=2, column=0, sticky="nsew", padx=15, pady=10)
 
     def show_picks(self):
         self.hide_all_frames()
-        self._highlight_active_button(getattr(self, 'picks_btn', None))
-        self.picks_frame.grid(row=0, column=1, sticky="nsew", padx=20, pady=20)
+        self._update_nav_ui("markets", "show_picks")
+        if hasattr(self, 'picks_frame'):
+            self.picks_frame.grid(row=2, column=0, sticky="nsew", padx=15, pady=10)
 
     def show_comparison(self):
         self.hide_all_frames()
-        self._highlight_active_button(getattr(self, 'comparison_btn', None))
+        self._update_nav_ui("markets", "show_comparison")
         if hasattr(self, 'comparison_frame'):
-            self.comparison_frame.grid(row=0, column=1, sticky="nsew", padx=20, pady=20)
+            self.comparison_frame.grid(row=2, column=0, sticky="nsew", padx=15, pady=10)
 
     def show_dow_theory(self):
         self.hide_all_frames()
-        self._highlight_active_button(getattr(self, 'dow_btn', None))
+        self._update_nav_ui("stocks", "show_dow_theory")
         if hasattr(self, 'cash_frame'):
             self.cash_frame.switch_main_view("DOW Theory")
-            self.cash_frame.grid(row=0, column=1, sticky="nsew", padx=20, pady=20)
+            self.cash_frame.grid(row=2, column=0, sticky="nsew", padx=15, pady=10)
 
     def show_futures(self):
         self.hide_all_frames()
-        self._highlight_active_button(getattr(self, 'futures_btn', None))
-        self.futures_frame.grid(row=0, column=1, sticky="nsew", padx=20, pady=20)
+        self._update_nav_ui("fno", "show_futures")
+        if hasattr(self, 'futures_frame'):
+            self.futures_frame.grid(row=2, column=0, sticky="nsew", padx=15, pady=10)
 
     def show_options(self):
         self.hide_all_frames()
-        self._highlight_active_button(getattr(self, 'options_btn', None))
-        self.options_frame.grid(row=0, column=1, sticky="nsew", padx=20, pady=20)
+        self._update_nav_ui("fno", "show_options")
+        if hasattr(self, 'options_frame'):
+            self.options_frame.grid(row=2, column=0, sticky="nsew", padx=15, pady=10)
 
     def show_closing_auction(self):
         self.hide_all_frames()
-        self._highlight_active_button(getattr(self, 'cas_btn', None))
+        self._update_nav_ui("fno", "show_closing_auction")
         if hasattr(self, 'cas_frame'):
-            self.cas_frame.grid(row=0, column=1, sticky="nsew", padx=20, pady=20)
+            self.cas_frame.grid(row=2, column=0, sticky="nsew", padx=15, pady=10)
 
     def show_trade_projection(self):
         self.hide_all_frames()
-        self._highlight_active_button(getattr(self, 'trade_proj_btn', None))
-        self.trade_proj_frame.grid(row=0, column=1, sticky="nsew", padx=20, pady=20)
+        self._update_nav_ui("fno", "show_trade_projection")
+        if hasattr(self, 'trade_proj_frame'):
+            self.trade_proj_frame.grid(row=2, column=0, sticky="nsew", padx=15, pady=10)
 
     def show_prediction(self):
         self.hide_all_frames()
-        self._highlight_active_button(getattr(self, 'predict_btn', None))
-        self.predict_frame.grid(row=0, column=1, sticky="nsew", padx=20, pady=20)
+        self._update_nav_ui("fno", "show_prediction")
+        if hasattr(self, 'predict_frame'):
+            self.predict_frame.grid(row=2, column=0, sticky="nsew", padx=15, pady=10)
 
     def show_cash(self):
         self.hide_all_frames()
-        self._highlight_active_button(getattr(self, 'cash_btn', None))
-        self.cash_frame.grid(row=0, column=1, sticky="nsew", padx=20, pady=20)
+        self._update_nav_ui("stocks", "show_cash")
+        if hasattr(self, 'cash_frame'):
+            self.cash_frame.grid(row=2, column=0, sticky="nsew", padx=15, pady=10)
 
     def show_earnings(self):
         self.hide_all_frames()
-        self._highlight_active_button(getattr(self, 'earnings_btn', None))
-        self.earnings_frame.grid(row=0, column=1, sticky="nsew", padx=20, pady=20)
+        self._update_nav_ui("stocks", "show_earnings")
+        if hasattr(self, 'earnings_frame'):
+            self.earnings_frame.grid(row=2, column=0, sticky="nsew", padx=15, pady=10)
 
     def show_ipo_analysis(self):
         self.hide_all_frames()
-        self._highlight_active_button(getattr(self, 'ipo_btn', None))
+        self._update_nav_ui("stocks", "show_ipo_analysis")
         if hasattr(self, 'ipo_frame'):
-            self.ipo_frame.grid(row=0, column=1, sticky="nsew", padx=20, pady=20)
+            self.ipo_frame.grid(row=2, column=0, sticky="nsew", padx=15, pady=10)
 
     def show_us_stocks(self):
         self.hide_all_frames()
-        self._highlight_active_button(getattr(self, 'us_stocks_btn', None))
-        self.us_stocks_frame.grid(row=0, column=1, sticky="nsew", padx=20, pady=20)
+        self._update_nav_ui("desk", "show_us_stocks")
+        if hasattr(self, 'us_stocks_frame'):
+            self.us_stocks_frame.grid(row=2, column=0, sticky="nsew", padx=15, pady=10)
 
     def show_smart_money(self):
         self.hide_all_frames()
-        self._highlight_active_button(getattr(self, 'smart_money_btn', None))
-        self.smart_money_frame.grid(row=0, column=1, sticky="nsew", padx=20, pady=20)
+        self._update_nav_ui("deep_intel", "show_smart_money")
+        if hasattr(self, 'smart_money_frame'):
+            self.smart_money_frame.grid(row=2, column=0, sticky="nsew", padx=15, pady=10)
 
     def show_rollover(self):
         self.hide_all_frames()
-        self._highlight_active_button(getattr(self, 'rollover_btn', None))
-        self.rollover_frame.grid(row=0, column=1, sticky="nsew", padx=20, pady=20)
+        self._update_nav_ui("deep_intel", "show_rollover")
+        if hasattr(self, 'rollover_frame'):
+            self.rollover_frame.grid(row=2, column=0, sticky="nsew", padx=15, pady=10)
 
     def show_participants(self):
         self.hide_all_frames()
-        self._highlight_active_button(getattr(self, 'participants_btn', None))
-        self.participants_frame.grid(row=0, column=1, sticky="nsew", padx=20, pady=20)
+        self._update_nav_ui("deep_intel", "show_participants")
+        if hasattr(self, 'participants_frame'):
+            self.participants_frame.grid(row=2, column=0, sticky="nsew", padx=15, pady=10)
 
     def show_journal(self):
         self.hide_all_frames()
-        self._highlight_active_button(getattr(self, 'journal_btn', None))
-        self.journal_frame.grid(row=0, column=1, sticky="nsew", padx=20, pady=20)
+        self._update_nav_ui("desk", "show_journal")
+        if hasattr(self, 'journal_frame'):
+            self.journal_frame.grid(row=2, column=0, sticky="nsew", padx=15, pady=10)
 
     def show_orders_analysis(self):
         self.hide_all_frames()
-        self._highlight_active_button(getattr(self, 'orders_analysis_btn', None))
-        self.orders_analysis_frame.grid(row=0, column=1, sticky="nsew", padx=20, pady=20)
+        self._update_nav_ui("desk", "show_orders_analysis")
+        if hasattr(self, 'orders_analysis_frame'):
+            self.orders_analysis_frame.grid(row=2, column=0, sticky="nsew", padx=15, pady=10)
+
+    def show_crashes_growth(self):
+        self.hide_all_frames()
+        self._update_nav_ui("learning", "show_crashes_growth")
+        if hasattr(self, 'crashes_growth_frame'):
+            self.crashes_growth_frame.grid(row=2, column=0, sticky="nsew", padx=15, pady=10)
 
     def open_btst_search(self):
         AdvancedBacktestSearchWindow(self, self.db)
