@@ -106,10 +106,10 @@ BEGIN
         AND Target.InstrumentType = Source.InstrumentType)
     WHEN MATCHED THEN
         UPDATE SET 
-            Target.OI_Long = Source.OI_Long,
-            Target.OI_Short = Source.OI_Short,
-            Target.Vol_Long = Source.Vol_Long,
-            Target.Vol_Short = Source.Vol_Short,
+            Target.OI_Long = COALESCE(Source.OI_Long, Target.OI_Long),
+            Target.OI_Short = COALESCE(Source.OI_Short, Target.OI_Short),
+            Target.Vol_Long = COALESCE(Source.Vol_Long, Target.Vol_Long),
+            Target.Vol_Short = COALESCE(Source.Vol_Short, Target.Vol_Short),
             Target.CreatedDate = GETDATE()
     WHEN NOT MATCHED THEN
         INSERT (SnapshotDate, ClientType, InstrumentType, OI_Long, OI_Short, Vol_Long, Vol_Short)

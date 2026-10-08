@@ -59,6 +59,8 @@ from market_participants_ui import MarketParticipantsFrame
 from flash_radar_ui import FlashRadarTab
 from trading_journal_module import ModernTradingJournalFrame
 from trade_orders_analysis_module import TradeOrdersAnalysisFrame
+from closing_auction_ui import ClosingAuctionAnalysisFrame
+from ipo_analysis_ui import IPOAnalysisFrame
 import customtkinter as ctk
 
 from tkinter import ttk
@@ -6159,11 +6161,13 @@ class App(ctk.CTk):
         self.trade_proj_btn = add_button("  Trade Projection Desk", self.show_trade_projection)
         self.predict_btn = add_button("  HF Decision Engine", self.show_prediction)
         self.btst_btn = add_button("  BTST / Date Search", self.open_btst_search)
+        self.cas_btn = add_button("  🔔 Closing Auction Session - Analysis", self.show_closing_auction)
 
         add_header("--- STOCK ANALYSIS ---")
         self.cash_btn = add_button("  Cash Stocks Analysis", self.show_cash)
         self.dow_btn = add_button("  🏛️ DOW Theory Analysis", self.show_dow_theory)
         self.earnings_btn = add_button("  Quarterly Results", self.show_earnings)
+        self.ipo_btn = add_button("  🚀 IPO Analysis", self.show_ipo_analysis)
 
         add_header("--- US STOCKS ---")
         self.us_stocks_btn = add_button("  US Stocks Journal", self.show_us_stocks)
@@ -6177,8 +6181,8 @@ class App(ctk.CTk):
 
         self._all_nav_btns = [
             self.flash_radar_btn, self.global_btn, self.picks_btn, self.comparison_btn, self.futures_btn, self.options_btn,
-            self.trade_proj_btn, self.predict_btn, self.btst_btn, self.cash_btn,
-            self.dow_btn, self.earnings_btn, self.us_stocks_btn, self.smart_money_btn,
+            self.trade_proj_btn, self.predict_btn, self.btst_btn, self.cas_btn, self.cash_btn,
+            self.dow_btn, self.earnings_btn, self.ipo_btn, self.us_stocks_btn, self.smart_money_btn,
             self.rollover_btn, self.participants_btn, self.journal_btn, self.orders_analysis_btn
         ]
 
@@ -6199,7 +6203,9 @@ class App(ctk.CTk):
         self.cash_frame = CashStocksAnalysisFrame(self, self.db, self.mapi)
         self.trade_proj_frame = TradeProjectionTab(self, self.cash_frame)
         self.predict_frame = HedgeFundEngineFrame(self, self.db, self.mapi)
+        self.cas_frame = ClosingAuctionAnalysisFrame(self, self.db, self.mapi)
         self.earnings_frame = EarningsDashboardFrame(self, self.db)
+        self.ipo_frame = IPOAnalysisFrame(self, self.db, self.mapi)
         self.us_stocks_frame = USStocksFrame(self, self.db)
         self.smart_money_frame = SmartMoneyStanceFrame(self)
         self.rollover_frame = RolloverIntelligenceTab(self, self.db)
@@ -6288,7 +6294,8 @@ class App(ctk.CTk):
         for frame_attr in ['flash_radar_frame', 'global_frame', 'picks_frame', 'futures_frame', 'options_frame', 
                            'trade_proj_frame', 'predict_frame', 'cash_frame', 'earnings_frame',
                            'us_stocks_frame', 'smart_money_frame', 'rollover_frame',
-                           'participants_frame', 'journal_frame', 'orders_analysis_frame', 'comparison_frame']:
+                           'participants_frame', 'journal_frame', 'orders_analysis_frame', 'comparison_frame',
+                           'cas_frame', 'ipo_frame']:
             if hasattr(self, frame_attr):
                 getattr(self, frame_attr).grid_forget()
 
@@ -6331,6 +6338,12 @@ class App(ctk.CTk):
         self._highlight_active_button(getattr(self, 'options_btn', None))
         self.options_frame.grid(row=0, column=1, sticky="nsew", padx=20, pady=20)
 
+    def show_closing_auction(self):
+        self.hide_all_frames()
+        self._highlight_active_button(getattr(self, 'cas_btn', None))
+        if hasattr(self, 'cas_frame'):
+            self.cas_frame.grid(row=0, column=1, sticky="nsew", padx=20, pady=20)
+
     def show_trade_projection(self):
         self.hide_all_frames()
         self._highlight_active_button(getattr(self, 'trade_proj_btn', None))
@@ -6350,6 +6363,12 @@ class App(ctk.CTk):
         self.hide_all_frames()
         self._highlight_active_button(getattr(self, 'earnings_btn', None))
         self.earnings_frame.grid(row=0, column=1, sticky="nsew", padx=20, pady=20)
+
+    def show_ipo_analysis(self):
+        self.hide_all_frames()
+        self._highlight_active_button(getattr(self, 'ipo_btn', None))
+        if hasattr(self, 'ipo_frame'):
+            self.ipo_frame.grid(row=0, column=1, sticky="nsew", padx=20, pady=20)
 
     def show_us_stocks(self):
         self.hide_all_frames()

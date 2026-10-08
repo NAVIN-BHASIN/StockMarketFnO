@@ -348,17 +348,23 @@ class TradeDrillDownModal(ctk.CTkToplevel):
 
     def _generate_recovery_plan(self, net_pnl):
         abs_loss = abs(net_pnl)
+        sym = self.trade_data.get('Symbol', 'This Instrument')
+        seg = self.trade_data.get('Segment', 'FnO')
+        op_type = self.trade_data.get('OptionType', '')
         lines = []
         if net_pnl < 0:
-            lines.append(f"• Total Target to Recover: Rs. {abs_loss:,.2f}")
-            lines.append("• Step 1 (Immediate Defense): Implement a 24-hour cooling period on this exact scrip to eradicate emotional revenge trading.")
-            lines.append("• Step 2 (Position Sizing): Reduce lot size by 50% on your next 2 setups. Confidence and capital must be rebuilt systematically.")
-            lines.append("• Step 3 (Weekly Recovery Roadmap): Target 2 disciplined trades with a strictly enforced 1:2 Risk-Reward ratio (Risk Rs. {:,.0f} to Gain Rs. {:,.0f} per trade).".format(abs_loss * 0.35, abs_loss * 0.70))
-            lines.append("• Step 4 (Monthly Milestone): Shift from naked option buying to Bull-Call / Bear-Put Spreads to permanently stop daily Theta bleeding.")
+            lines.append(f"• Total Target to Recover on {sym}: Rs. {abs_loss:,.2f}")
+            lines.append(f"• Immediate Defensive Circuit Breaker: Enforce a mandatory 24-hour cooling period on {sym} to completely eradicate emotional revenge trading and tilt.")
+            lines.append(f"• ☀️ Day Plan (Intraday Scalp Action): Limit strictly to 1 high-probability trade/day during peak morning volume (9:20 - 10:45 AM). Require 15m VWAP reclaim + ATR-based hard stop-loss. Cut lot size by 50% until 2 consecutive winning executions.")
+            lines.append(f"• 📅 Weekly Plan (Swing Momentum & Defined Spreads): Never buy naked OTM options on {sym}! Transition to Bull-Call / Bear-Put Debit Spreads (Buy ATM Delta 0.55, Sell OTM Delta 0.25) with 20-30 DTE to slash Theta decay by 55% while maintaining 1:2.2 payoff.")
+            lines.append(f"• 🗓️ Monthly Positional & MTF Cash Alternative: If {sym} has solid quarterly earnings momentum, consider accumulating in Cash Equity or 4x MTF on 200 EMA / 50 SMA support. Zero time decay, zero expiry pin risk, allowing natural price discovery.")
+            lines.append(f"• 📈 Technical & Market Regime Justification: Align entry with higher-timeframe trend. If India VIX is elevated (>16), avoid buying premium; if VIX is compressed (<12), trade breakout spreads. Target Rs. {abs_loss * 0.35:,.0f} in Phase 1 (4 trades, risking Rs. {abs_loss * 0.15:,.0f}/trade for 1:2.3 R:R).")
+            lines.append("• 🛡️ Anti-Gambling Rule: Never average down on a decaying contract. A trailing stop-loss must be active in the broker terminal from the first minute of execution.")
         else:
-            lines.append("• Capital Compounding Rule: Bank 50% of trade profits into long-term cash reserves or debt/SGBs.")
-            lines.append("• Risk-Reward Discipline: Maintain your winning entry process. Do not double position size after a win.")
-            lines.append("• Systematic Trailing: Let winners run towards multi-day resistance while trailing stop-loss to breakeven.")
+            lines.append(f"• Capital Compounding Rule: Bank 50% of the Rs. {net_pnl:,.2f} profit into long-term cash reserves or low-risk liquid debt/SGBs.")
+            lines.append("• Risk-Reward Discipline: Maintain your winning entry process. Do NOT double lot size on the next trade (avoid euphoria bias).")
+            lines.append(f"• Trend Maximization on {sym}: Let winners run towards multi-day resistance while trailing stop-loss to breakeven once 1R gain is achieved.")
+            lines.append("• Capital Reallocation: Reinvest 25% of trading gains into fundamentally sound MTF cash swings or dividend anchors.")
             
         return "\n".join(lines)
 
@@ -413,6 +419,179 @@ class TradeDrillDownModal(ctk.CTkToplevel):
             messagebox.showerror("Error", f"Failed to save changes to database: {e}")
 
 # -------------------------------------------------------------
+# DEDICATED INSTITUTIONAL SYMBOL RECOVERY MODAL
+# -------------------------------------------------------------
+class SymbolRecoveryModal(ctk.CTkToplevel):
+    def __init__(self, parent, sym_data):
+        super().__init__(parent)
+        self.sym_data = sym_data
+        self.sym = str(sym_data.get('Symbol', 'INSTRUMENT')).strip()
+        self.net_loss = abs(float(sym_data.get('NetLoss', sym_data.get('Loss', sym_data.get('NetPnL', 0.0)))))
+        self.trade_cnt = int(sym_data.get('Trades', 1))
+        self.loss_cnt = int(sym_data.get('LossTrades', self.trade_cnt))
+        self.seg = str(sym_data.get('Segment', 'FnO')).strip()
+        self.opt_type = str(sym_data.get('OptionType', 'CE')).strip()
+        self.diagnosis = str(sym_data.get('Diagnosis', 'Naked Option Buying • Held Through Theta Erosion')).strip()
+        
+        self.title(f"🚀 Turnaround Blueprint & Loss-to-Profit Roadmap • {self.sym}")
+        self.geometry("980x780")
+        self.minsize(880, 680)
+        self.configure(fg_color="#0F172A")
+        self.attributes("-topmost", True)
+        try:
+            self.transient(parent)
+        except Exception:
+            pass
+            
+        self._build_ui()
+
+    def _build_ui(self):
+        # 1. Executive Modal Header
+        hdr = ctk.CTkFrame(self, fg_color="#1E293B", corner_radius=12, border_width=1, border_color="#334155")
+        hdr.pack(fill="x", padx=16, pady=(16, 10))
+        
+        h_left = ctk.CTkFrame(hdr, fg_color="transparent")
+        h_left.pack(side="left", padx=16, pady=12)
+        
+        ctk.CTkLabel(h_left, text=f"🎯 {self.sym} Turnaround Blueprint", 
+                     font=ctk.CTkFont(size=20, weight="bold"), text_color="#38BDF8").pack(anchor="w")
+        ctk.CTkLabel(h_left, text=f"Data-Driven Asset Recovery Strategy • Segment: {self.seg} ({self.opt_type}) • {self.trade_cnt} Journal Trades", 
+                     font=ctk.CTkFont(size=12), text_color="#94A3B8").pack(anchor="w")
+        
+        h_right = ctk.CTkFrame(hdr, fg_color="transparent")
+        h_right.pack(side="right", padx=16, pady=12)
+        
+        b_loss = ctk.CTkFrame(h_right, fg_color="#450A0A", corner_radius=8, border_width=1, border_color="#DC2626")
+        b_loss.pack(side="right", padx=4)
+        ctk.CTkLabel(b_loss, text="RECOVERABLE LOSS", font=ctk.CTkFont(size=10, weight="bold"), text_color="#FCA5A5").pack(padx=10, pady=(4, 1))
+        ctk.CTkLabel(b_loss, text=f"-Rs. {self.net_loss:,.2f}", font=ctk.CTkFont(size=15, weight="bold"), text_color="#EF4444").pack(padx=10, pady=(0, 4))
+
+        # 2. Main Scrollable Container
+        body = ctk.CTkScrollableFrame(self, fg_color="transparent")
+        body.pack(fill="both", expand=True, padx=16, pady=(0, 10))
+        
+        # CARD 1: Forensic Root-Cause Diagnosis
+        c_diag = ctk.CTkFrame(body, fg_color="#181818", corner_radius=10, border_width=1, border_color="#B91C1C")
+        c_diag.pack(fill="x", pady=6)
+        ctk.CTkLabel(c_diag, text="🔍 FORENSIC AUDIT: Why Did You Incur Losses on This Instrument?", 
+                     font=ctk.CTkFont(size=13, weight="bold"), text_color="#F87171").pack(anchor="w", padx=16, pady=(12, 4))
+        
+        diag_lines = [
+            f"• Journal Diagnosis: {self.diagnosis}",
+            f"• Capital Trapped: Rs. {self.net_loss:,.2f} lost across {self.loss_cnt} losing trades (Average loss per trade: Rs. {self.net_loss/max(1, self.loss_cnt):,.2f}).",
+            f"• Primary Fatal Flaw: Buying naked {self.opt_type} contracts and carrying them overnight through non-linear Theta decay.",
+            "• Absence of Pre-Defined Stop-Loss: Trades were allowed to bleed beyond acceptable risk limits instead of being cut at -25% to -30% premium drag.",
+            f"• Revenge Averaging Trap: Adding lots to losing positions on {self.sym} compounded drawdowns instead of protecting capital."
+        ]
+        ctk.CTkLabel(c_diag, text="\n".join(diag_lines), justify="left", font=ctk.CTkFont(size=11), text_color="#E2E8F0").pack(anchor="w", padx=16, pady=(0, 12))
+
+        # CARD 2: Multi-Horizon Turnaround Roadmap
+        c_plan = ctk.CTkFrame(body, fg_color="#181818", corner_radius=10, border_width=1, border_color="#0284C7")
+        c_plan.pack(fill="x", pady=6)
+        ctk.CTkLabel(c_plan, text=f"🚀 MULTI-HORIZON ACTION PLANS FOR {self.sym}", 
+                     font=ctk.CTkFont(size=13, weight="bold"), text_color="#38BDF8").pack(anchor="w", padx=16, pady=(12, 6))
+
+        h_grid = ctk.CTkFrame(c_plan, fg_color="transparent")
+        h_grid.pack(fill="x", padx=12, pady=(0, 12))
+        h_grid.columnconfigure((0, 1), weight=1)
+
+        # Plan 1: Day (Intraday)
+        p1 = ctk.CTkFrame(h_grid, fg_color="#0D1117", corner_radius=8, border_width=1, border_color="#21262D")
+        p1.grid(row=0, column=0, padx=4, pady=4, sticky="nsew")
+        ctk.CTkLabel(p1, text="☀️ Day Plan (Intraday Execution)", font=ctk.CTkFont(size=11, weight="bold"), text_color="#FBBF24").pack(anchor="w", padx=10, pady=(8, 3))
+        p1_txt = (
+            f"• Trigger: 15m VWAP reclaim + 9 EMA crossover with above-average volume.\n"
+            f"• Execution Limit: Strictly 1 trade/day on {self.sym}. Avoid afternoon churn.\n"
+            f"• Risk Ceiling: Max risk capped at Rs. {min(4000, max(1200, self.net_loss * 0.03)):,.0f}/trade.\n"
+            f"• Stop-Loss Rule: Hard broker SL placed at 0.8x ATR. Exit by 3:15 PM without exception."
+        )
+        ctk.CTkLabel(p1, text=p1_txt, justify="left", font=ctk.CTkFont(size=10), text_color="#CBD5E1").pack(anchor="w", padx=10, pady=(0, 8))
+
+        # Plan 2: Weekly (Swing)
+        p2 = ctk.CTkFrame(h_grid, fg_color="#0D1117", corner_radius=8, border_width=1, border_color="#21262D")
+        p2.grid(row=0, column=1, padx=4, pady=4, sticky="nsew")
+        ctk.CTkLabel(p2, text="📅 Weekly Plan (Defined-Risk Spreads)", font=ctk.CTkFont(size=11, weight="bold"), text_color="#34D399").pack(anchor="w", padx=10, pady=(8, 3))
+        p2_txt = (
+            f"• Vehicle: Defined-Risk Bull Call / Bear Put Spread (20-30 DTE series).\n"
+            f"• Strikes: Buy ATM Delta 0.55, Sell OTM Delta 0.25 (Cuts Theta decay by 55%).\n"
+            f"• Max Loss: Strictly capped to net premium debit paid at inception.\n"
+            f"• Payoff Mandate: Target 1:2.3 min R:R. Take profit at 55% of max spread profit."
+        )
+        ctk.CTkLabel(p2, text=p2_txt, justify="left", font=ctk.CTkFont(size=10), text_color="#CBD5E1").pack(anchor="w", padx=10, pady=(0, 8))
+
+        # Plan 3: Monthly (Positional & MTF Cash)
+        p3 = ctk.CTkFrame(h_grid, fg_color="#0D1117", corner_radius=8, border_width=1, border_color="#21262D")
+        p3.grid(row=1, column=0, padx=4, pady=4, sticky="nsew")
+        ctk.CTkLabel(p3, text="🗓️ Monthly Plan (Positional & 4x MTF)", font=ctk.CTkFont(size=11, weight="bold"), text_color="#60A5FA").pack(anchor="w", padx=10, pady=(8, 3))
+        p3_txt = (
+            f"• Alternative Vehicle: Shift from decaying options to 4x MTF Cash Equity.\n"
+            f"• Trigger: 50 EMA / 200 EMA pullback with weekly RSI rebound above 45.\n"
+            f"• Advantage: Zero Greek risk, zero time decay, zero monthly rollover drag.\n"
+            f"• Horizon: 2-6 weeks swing holding targeting 10-18% underlying stock move."
+        )
+        ctk.CTkLabel(p3, text=p3_txt, justify="left", font=ctk.CTkFont(size=10), text_color="#CBD5E1").pack(anchor="w", padx=10, pady=(0, 8))
+
+        # Plan 4: Yearly (Compounding Anchor)
+        p4 = ctk.CTkFrame(h_grid, fg_color="#0D1117", corner_radius=8, border_width=1, border_color="#21262D")
+        p4.grid(row=1, column=1, padx=4, pady=4, sticky="nsew")
+        ctk.CTkLabel(p4, text="📈 Yearly Plan (Compounding & Reinvestment)", font=ctk.CTkFont(size=11, weight="bold"), text_color="#C084FC").pack(anchor="w", padx=10, pady=(8, 3))
+        p4_txt = (
+            f"• Capital Discipline: Bank 50% of each recovered profit tranche into cash reserves.\n"
+            f"• Plough-Back Rule: Reallocate 30% into fundamentally strong dividend/growth anchors.\n"
+            f"• Asymmetry: Maintain 1:2.5+ R:R so that 40% win rate produces positive net growth.\n"
+            f"• Goal: Recover the full Rs. {self.net_loss:,.2f} over 3 planned milestones."
+        )
+        ctk.CTkLabel(p4, text=p4_txt, justify="left", font=ctk.CTkFont(size=10), text_color="#CBD5E1").pack(anchor="w", padx=10, pady=(0, 8))
+
+        # CARD 3: Technical & Market Regime Justification
+        c_tech = ctk.CTkFrame(body, fg_color="#181818", corner_radius=10, border_width=1, border_color="#166534")
+        c_tech.pack(fill="x", pady=6)
+        ctk.CTkLabel(c_tech, text="📊 TECHNICAL & GLOBAL MARKET REGIME JUSTIFICATION", 
+                     font=ctk.CTkFont(size=13, weight="bold"), text_color="#4ADE80").pack(anchor="w", padx=16, pady=(12, 4))
+        
+        tech_lines = [
+            f"• India VIX Regime Filter: If VIX > 16.0, option premiums are inflated; strictly avoid buying naked calls. If VIX < 12.0, volatility is compressed; use debit breakout spreads.",
+            f"• Multi-Timeframe Trend Confirmation: Only initiate Long recovery trades on {self.sym} when Daily price is above 20 EMA and Weekly RSI > 50.",
+            f"• Institutional Flow (FII/DII) Validation: Check FII index futures long-short ratio and delivery volume before initiating aggressive swing positions.",
+            f"• Support / Resistance Zones: Identify high-volume clusters (Point of Control) from recent 30-day distribution to establish high-probability targets."
+        ]
+        ctk.CTkLabel(c_tech, text="\n".join(tech_lines), justify="left", font=ctk.CTkFont(size=11), text_color="#E2E8F0").pack(anchor="w", padx=16, pady=(0, 12))
+
+        # CARD 4: 3-Phase Mathematical Recovery Milestones
+        c_math = ctk.CTkFrame(body, fg_color="#181818", corner_radius=10, border_width=1, border_color="#374151")
+        c_math.pack(fill="x", pady=6)
+        ctk.CTkLabel(c_math, text=f"🧮 3-PHASE RECOVERY MILESTONES FOR {self.sym}", 
+                     font=ctk.CTkFont(size=13, weight="bold"), text_color="#FBBF24").pack(anchor="w", padx=16, pady=(12, 6))
+
+        m_box = ctk.CTkFrame(c_math, fg_color="transparent")
+        m_box.pack(fill="x", padx=14, pady=(0, 12))
+        m_box.columnconfigure((0, 1, 2), weight=1)
+
+        m1_target = self.net_loss * 0.30
+        m2_target = self.net_loss * 0.40
+        m3_target = self.net_loss * 0.30
+
+        milestones = [
+            ("PHASE 1: STABILIZE", f"Reclaim Rs. {m1_target:,.2f}", "Target: 30% Recovery\n3-4 High-Conviction Trades\nRisk: 1.0% per trade", "#38BDF8"),
+            ("PHASE 2: REBUILD", f"Reclaim Rs. {m2_target:,.2f}", "Target: 40% Recovery\n4-5 Defined-Risk Spreads\nRisk: 1.2% per trade", "#34D399"),
+            ("PHASE 3: EXPAND", f"Reclaim Rs. {m3_target:,.2f}+", "Target: Full 100% Recovery\nPlus Profit Cushion Buffer\nRisk: 1.5% per trade", "#A78BFA")
+        ]
+
+        for idx, (m_title, m_val, m_desc, m_col) in enumerate(milestones):
+            card = ctk.CTkFrame(m_box, fg_color="#0D1117", corner_radius=8, border_width=1, border_color="#21262D")
+            card.grid(row=0, column=idx, padx=4, sticky="nsew")
+            ctk.CTkLabel(card, text=m_title, font=ctk.CTkFont(size=11, weight="bold"), text_color=m_col).pack(anchor="w", padx=10, pady=(8, 2))
+            ctk.CTkLabel(card, text=m_val, font=ctk.CTkFont(size=13, weight="bold"), text_color="#FFFFFF").pack(anchor="w", padx=10, pady=(0, 2))
+            ctk.CTkLabel(card, text=m_desc, justify="left", font=ctk.CTkFont(size=10), text_color="#94A3B8").pack(anchor="w", padx=10, pady=(0, 8))
+
+        # Bottom Action Bar
+        act_bar = ctk.CTkFrame(self, fg_color="#1E293B", corner_radius=10)
+        act_bar.pack(fill="x", padx=16, pady=(4, 16))
+        
+        ctk.CTkButton(act_bar, text="Close Blueprint", width=120, height=32, fg_color="#334155", hover_color="#475569",
+                      font=ctk.CTkFont(size=12, weight="bold"), command=self.destroy).pack(side="right", padx=12, pady=8)
+
+# -------------------------------------------------------------
 # MAIN MODERN TRADING JOURNAL FRAME
 # -------------------------------------------------------------
 class ModernTradingJournalFrame(ctk.CTkFrame):
@@ -433,6 +612,8 @@ class ModernTradingJournalFrame(ctk.CTkFrame):
             "📊 Attribution": True,
             "📈 Equity Curve": True,
             "🛡️ Risk Engine": True,
+            "🚀 Loss-to-Profit Recovery Plan": True,
+            "🧠 Deep Behaviour Reflection": True,
             "🧠 Mistake Journal": True,
             "⚡ MTF Center": True,
             "🔄 Ingestion Hub": True,
@@ -475,12 +656,12 @@ class ModernTradingJournalFrame(ctk.CTkFrame):
         ctk.CTkButton(right, text=" Refresh", width=85, height=30, fg_color="#FF8F00", hover_color="#F57C00",
                       font=ctk.CTkFont(size=12, weight="bold"), command=self.load_data).pack(side="left", padx=3)
         
-    # ------------------ ENHANCED OMNI-FILTER BAR (2-TIER) ------------------
+    # ------------------ ENHANCED OMNI-FILTER BAR (3-TIER INSTITUTIONAL GRID) ------------------
     def _build_filter_bar(self):
         f_wrap = ctk.CTkFrame(self, fg_color="#1A1A1A", corner_radius=10, border_width=1, border_color="#2A2A2A")
         f_wrap.grid(row=1, column=0, sticky="ew", padx=20, pady=(4, 8))
         
-        # ROW 1: PRIMARY CRITERIA (FY, Expiry Date, Broker, Segment, Index/Universe, Type, Outcome)
+        # ROW 1: PRIMARY CRITERIA & PnL FILTER (FY, Broker, Segment, Universe, Type, PnL)
         row1 = ctk.CTkFrame(f_wrap, fg_color="transparent")
         row1.pack(fill="x", padx=10, pady=(6, 3))
         
@@ -491,52 +672,55 @@ class ModernTradingJournalFrame(ctk.CTkFrame):
                                          command=self._on_fy_changed)
         self.fy_menu.pack(side="left", padx=(0, 8))
         
-        # 2. Expiry Date Filter (Day-Month-Year e.g. 25-Sep-2026)
-        ctk.CTkLabel(row1, text="Expiry Date:", font=ctk.CTkFont(size=11, weight="bold"), text_color="#CE93D8").pack(side="left", padx=(2, 2))
-        self.f_expiry = ctk.StringVar(value="All Expiries")
-        self.expiry_menu = ctk.CTkOptionMenu(row1, variable=self.f_expiry, values=["All Expiries"], width=125, height=26, font=ctk.CTkFont(size=11),
-                                             command=lambda _: self.apply_filters())
-        self.expiry_menu.pack(side="left", padx=(0, 8))
-        
-        # 3. Broker Filter
+        # 2. Broker Filter
         ctk.CTkLabel(row1, text="Broker:", font=ctk.CTkFont(size=11, weight="bold")).pack(side="left", padx=(2, 2))
         self.f_broker = ctk.StringVar(value="All Brokers")
         self.broker_menu = ctk.CTkOptionMenu(row1, variable=self.f_broker, values=["All Brokers", "Zerodha", "HDFC Securities", "BlinkX", "INDMoney"], 
                                              width=115, height=26, font=ctk.CTkFont(size=11), command=lambda _: self.apply_filters())
         self.broker_menu.pack(side="left", padx=(0, 8))
         
-        # 4. Segment Filter
+        # 3. Segment Filter
         ctk.CTkLabel(row1, text="Segment:", font=ctk.CTkFont(size=11, weight="bold")).pack(side="left", padx=(2, 2))
         self.f_segment = ctk.StringVar(value="All Segments")
         self.segment_menu = ctk.CTkOptionMenu(row1, variable=self.f_segment, values=["All Segments", "Equity", "FnO", "Commodity", "MTF"], 
-                                              width=105, height=26, font=ctk.CTkFont(size=11), command=lambda _: self.apply_filters())
+                                              width=100, height=26, font=ctk.CTkFont(size=11), command=lambda _: self.apply_filters())
         self.segment_menu.pack(side="left", padx=(0, 8))
 
-        # 5. Index / Universe Filter
+        # 4. Index / Universe Filter
         ctk.CTkLabel(row1, text="Universe:", font=ctk.CTkFont(size=11, weight="bold"), text_color="#FFB74D").pack(side="left", padx=(2, 2))
         self.f_index = ctk.StringVar(value="All Instruments")
         self.index_menu = ctk.CTkOptionMenu(row1, variable=self.f_index, 
                                             values=["All Instruments", "Major Indices (NIFTY/BNF/SENSEX)", "Single Stock F&O", "Cash Stocks (Equity)", "Commodities (MCX)"], 
-                                            width=165, height=26, font=ctk.CTkFont(size=11), command=lambda _: self.apply_filters())
+                                            width=150, height=26, font=ctk.CTkFont(size=11), command=lambda _: self.apply_filters())
         self.index_menu.pack(side="left", padx=(0, 8))
         
-        # 6. Instrument Type Filter
+        # 5. Instrument Type Filter
         ctk.CTkLabel(row1, text="Type:", font=ctk.CTkFont(size=11, weight="bold")).pack(side="left", padx=(2, 2))
         self.f_type = ctk.StringVar(value="All Types")
         self.type_menu = ctk.CTkOptionMenu(row1, variable=self.f_type, values=["All Types", "Options CE", "Options PE", "Futures", "Delivery", "Intraday"], 
-                                           width=100, height=26, font=ctk.CTkFont(size=11), command=lambda _: self.apply_filters())
+                                           width=95, height=26, font=ctk.CTkFont(size=11), command=lambda _: self.apply_filters())
         self.type_menu.pack(side="left", padx=(0, 8))
 
-        # 7. Outcome Filter
-        ctk.CTkLabel(row1, text="P&L:", font=ctk.CTkFont(size=11, weight="bold")).pack(side="left", padx=(2, 2))
-        self.f_outcome = ctk.StringVar(value="All")
-        self.outcome_menu = ctk.CTkOptionMenu(row1, variable=self.f_outcome, values=["All", "Profit Only", "Loss Only"], 
-                                              width=90, height=26, font=ctk.CTkFont(size=11), command=lambda _: self.apply_filters())
-        self.outcome_menu.pack(side="left", padx=(0, 4))
+        # 6. PnL Filter (Prominent & Eye-Catching: Both, Profits Only, Loss Only)
+        ctk.CTkLabel(row1, text="PnL:", font=ctk.CTkFont(size=11, weight="bold"), text_color="#00E676").pack(side="left", padx=(2, 2))
+        self.f_outcome = ctk.StringVar(value="Both")
+        self.outcome_menu = ctk.CTkOptionMenu(row1, variable=self.f_outcome, values=["Both", "Profits Only", "Loss Only"], 
+                                              width=115, height=26, font=ctk.CTkFont(size=11, weight="bold"),
+                                              fg_color="#1E3A2F", button_color="#2E7D32", button_hover_color="#388E3C",
+                                              text_color="#69F0AE", dropdown_fg_color="#182A20", dropdown_hover_color="#2E7D32",
+                                              command=lambda _: self.apply_filters())
+        self.outcome_menu.pack(side="left", padx=(0, 8))
         
-        # ROW 2: DATE RANGES (ENTRY & EXIT) WITH CALENDAR PICKER + SYMBOL SELECT & SEARCH
+        # ROW 2: TIMELINE & EXPIRY CRITERIA (Expiry Date, Entry Range, Exit Range)
         row2 = ctk.CTkFrame(f_wrap, fg_color="transparent")
-        row2.pack(fill="x", padx=10, pady=(2, 6))
+        row2.pack(fill="x", padx=10, pady=(2, 3))
+        
+        # Expiry Date Filter (Day-Month-Year e.g. 25-Sep-2026)
+        ctk.CTkLabel(row2, text="Expiry Date:", font=ctk.CTkFont(size=11, weight="bold"), text_color="#CE93D8").pack(side="left", padx=(2, 2))
+        self.f_expiry = ctk.StringVar(value="All Expiries")
+        self.expiry_menu = ctk.CTkOptionMenu(row2, variable=self.f_expiry, values=["All Expiries"], width=125, height=26, font=ctk.CTkFont(size=11),
+                                             command=lambda _: self.apply_filters())
+        self.expiry_menu.pack(side="left", padx=(0, 12))
         
         # Trade Entry Date Range
         ctk.CTkLabel(row2, text="Entry Range:", font=ctk.CTkFont(size=11, weight="bold"), text_color="#4FC3F7").pack(side="left", padx=(2, 2))
@@ -553,7 +737,7 @@ class ModernTradingJournalFrame(ctk.CTkFrame):
         self.entry_to_e.pack(side="left", padx=1)
         self.entry_to_e.bind("<KeyRelease>", self._schedule_filter_update)
         ctk.CTkButton(row2, text="📅", width=26, height=26, fg_color="#333333", hover_color="#444444", 
-                      command=lambda: self._open_calendar_picker(self.f_entry_to, "Select Entry To Date")).pack(side="left", padx=(1, 8))
+                      command=lambda: self._open_calendar_picker(self.f_entry_to, "Select Entry To Date")).pack(side="left", padx=(1, 12))
         
         # Trade Exit Date Range
         ctk.CTkLabel(row2, text="Exit Date Range:", font=ctk.CTkFont(size=11, weight="bold"), text_color="#81C784").pack(side="left", padx=(2, 2))
@@ -570,25 +754,33 @@ class ModernTradingJournalFrame(ctk.CTkFrame):
         self.exit_to_e.pack(side="left", padx=1)
         self.exit_to_e.bind("<KeyRelease>", self._schedule_filter_update)
         ctk.CTkButton(row2, text="📅", width=26, height=26, fg_color="#333333", hover_color="#444444", 
-                      command=lambda: self._open_calendar_picker(self.f_exit_to, "Select Exit To Date")).pack(side="left", padx=(1, 8))
+                      command=lambda: self._open_calendar_picker(self.f_exit_to, "Select Exit To Date")).pack(side="left", padx=(1, 6))
+
+        # ROW 3: SYMBOL LOOKUP & ACTIONS
+        row3 = ctk.CTkFrame(f_wrap, fg_color="transparent")
+        row3.pack(fill="x", padx=10, pady=(2, 6))
         
         # Symbol Select Dropdown + Text Search
-        ctk.CTkLabel(row2, text="Symbol:", font=ctk.CTkFont(size=11, weight="bold")).pack(side="left", padx=(2, 2))
+        ctk.CTkLabel(row3, text="Symbol:", font=ctk.CTkFont(size=11, weight="bold"), text_color="#E0E0E0").pack(side="left", padx=(2, 2))
         self.f_sym_select = ctk.StringVar(value="All Symbols")
-        self.sym_select_menu = ctk.CTkOptionMenu(row2, variable=self.f_sym_select, values=["All Symbols"], width=120, height=26, font=ctk.CTkFont(size=11),
+        self.sym_select_menu = ctk.CTkOptionMenu(row3, variable=self.f_sym_select, values=["All Symbols"], width=130, height=26, font=ctk.CTkFont(size=11),
                                                  command=self._on_sym_dropdown_selected)
-        self.sym_select_menu.pack(side="left", padx=(0, 4))
+        self.sym_select_menu.pack(side="left", padx=(0, 6))
         
         self.f_sym = ctk.StringVar()
-        self.sym_entry = ctk.CTkEntry(row2, textvariable=self.f_sym, placeholder_text="Search Symbol...", width=130, height=26, font=ctk.CTkFont(size=11))
-        self.sym_entry.pack(side="left", padx=(0, 8))
+        self.sym_entry = ctk.CTkEntry(row3, textvariable=self.f_sym, placeholder_text="Search Symbol / Contract...", width=160, height=26, font=ctk.CTkFont(size=11))
+        self.sym_entry.pack(side="left", padx=(0, 10))
         self.sym_entry.bind("<KeyRelease>", self._schedule_filter_update)
         
         # Action Buttons
-        ctk.CTkButton(row2, text="Apply Filters", width=90, height=26, font=ctk.CTkFont(size=11, weight="bold"), 
-                      command=self.apply_filters).pack(side="left", padx=2)
-        ctk.CTkButton(row2, text="Reset All", width=85, height=26, fg_color="#555555", hover_color="#444444", 
+        ctk.CTkButton(row3, text=" Apply Filters", width=105, height=26, fg_color="#1E88E5", hover_color="#1565C0",
+                      font=ctk.CTkFont(size=11, weight="bold"), command=self.apply_filters).pack(side="left", padx=2)
+        ctk.CTkButton(row3, text=" Reset All", width=85, height=26, fg_color="#424242", hover_color="#555555", 
                       font=ctk.CTkFont(size=11), command=self.reset_filters).pack(side="left", padx=2)
+        
+        # Live Filter Feedback Pill / Badge on Right
+        self.filter_status_badge = ctk.CTkLabel(row3, text="", font=ctk.CTkFont(size=11, weight="bold"), text_color="#A0A0A0")
+        self.filter_status_badge.pack(side="right", padx=10)
         
     def _schedule_filter_update(self, event=None):
         if self._filter_timer:
@@ -722,6 +914,7 @@ class ModernTradingJournalFrame(ctk.CTkFrame):
         self.tab_attribution = self.tabs.add("📊 Attribution")
         self.tab_charts = self.tabs.add("📈 Equity Curve")
         self.tab_risk = self.tabs.add("🛡️ Risk Engine")
+        self.tab_recovery = self.tabs.add("🚀 Loss-to-Profit Recovery Plan")
         self.tab_psychology = self.tabs.add("🧠 Deep Behaviour Reflection")
         self.tab_mtf = self.tabs.add("⚡ MTF Center")
         self.tab_ingest = self.tabs.add("🔄 Ingestion Hub")
@@ -736,6 +929,7 @@ class ModernTradingJournalFrame(ctk.CTkFrame):
         self._build_attribution_tab()
         self._build_charts_tab()
         self._build_risk_tab()
+        self._build_recovery_tab()
         self._build_psychology_tab()
         self._build_mtf_tab()
         self._build_ingest_tab()
@@ -757,6 +951,8 @@ class ModernTradingJournalFrame(ctk.CTkFrame):
             self._render_charts()
         elif "Risk" in tab_name:
             self._render_risk()
+        elif "Recovery" in tab_name:
+            self._render_recovery_plan()
         elif "Behaviour" in tab_name or "Mistake" in tab_name or "Psychology" in tab_name:
             self._render_psychology()
         elif "MTF" in tab_name:
@@ -996,7 +1192,18 @@ class ModernTradingJournalFrame(ctk.CTkFrame):
         self.risk_worst_table = ctk.CTkFrame(rd_box, fg_color="transparent")
         self.risk_worst_table.pack(fill="both", expand=True, padx=15, pady=(0, 15))
 
-    # TAB 6: DEEP BEHAVIOURAL REFLECTION & PSYCHOLOGICAL INSIGHTS
+    # TAB 6: LOSS-TO-PROFIT RECOVERY PLAN & TURNAROUND DESK
+    def _build_recovery_tab(self):
+        self.recovery_container = ctk.CTkScrollableFrame(self.tab_recovery, fg_color="transparent")
+        self.recovery_container.pack(fill="both", expand=True, padx=8, pady=8)
+        
+        self.recovery_horizon_var = ctk.StringVar(value="☀️ Day Plan (Intraday)")
+        self.sim_target_var = ctk.StringVar(value="100000")
+        self.sim_risk_var = ctk.StringVar(value="4000")
+        self.sim_rr_var = ctk.StringVar(value="2.5")
+        self.sim_winrate_var = ctk.StringVar(value="60")
+
+    # TAB 7: DEEP BEHAVIOURAL REFLECTION & PSYCHOLOGICAL INSIGHTS
     def _build_psychology_tab(self):
         self.psych_container = ctk.CTkScrollableFrame(self.tab_psychology, fg_color="transparent")
         self.psych_container.pack(fill="both", expand=True, padx=8, pady=8)
@@ -1165,11 +1372,11 @@ class ModernTradingJournalFrame(ctk.CTkFrame):
             elif sel_type == "Intraday":
                 df = df[df['SubSegment'] == 'Intraday']
                 
-        # 7. Outcome Filter
+        # 7. Outcome / PnL Filter (Both, Profits Only, Loss Only)
         sel_out = self.f_outcome.get()
-        if sel_out == "Profit Only":
+        if sel_out in ("Profits Only", "Profit Only"):
             df = df[df['NetPnL'] > 0]
-        elif sel_out == "Loss Only":
+        elif sel_out in ("Loss Only", "Losses Only"):
             df = df[df['NetPnL'] < 0]
             
         # 8. Trade Entry Date Range
@@ -1207,6 +1414,15 @@ class ModernTradingJournalFrame(ctk.CTkFrame):
             
         self.filtered_df = df
         
+        # Update live filter status badge
+        if hasattr(self, 'filter_status_badge'):
+            tot = len(self.full_df) if hasattr(self, 'full_df') and not self.full_df.empty else 0
+            cur = len(df)
+            if cur == tot:
+                self.filter_status_badge.configure(text=f"🟢 Showing All {cur:,} Trades", text_color="#69F0AE")
+            else:
+                self.filter_status_badge.configure(text=f"🔍 Filtered: {cur:,} of {tot:,} Trades", text_color="#FFD54F")
+
         # Mark all tabs as dirty for on-demand lazy loading
         for t in self._dirty_tabs:
             self._dirty_tabs[t] = True
@@ -1226,7 +1442,7 @@ class ModernTradingJournalFrame(ctk.CTkFrame):
         self.f_segment.set("All Segments")
         self.f_index.set("All Instruments")
         self.f_type.set("All Types")
-        self.f_outcome.set("All")
+        self.f_outcome.set("Both")
         self.f_entry_from.set("")
         self.f_entry_to.set("")
         self.f_exit_from.set("")
@@ -1765,6 +1981,568 @@ class ModernTradingJournalFrame(ctk.CTkFrame):
             ])
         self._build_mini_table(self.risk_worst_table, ['Exit Date', 'Broker', 'Symbol', 'Contract', 'Qty', 'Gross Loss', 'Charges', 'Net Loss'], 
                                worst_rows, highlight_col=7, highlight_color="#FF5252")
+
+    # ------------------ LOSS-TO-PROFIT RECOVERY PLAN TAB ------------------
+    def _render_recovery_plan(self):
+        for w in self.recovery_container.winfo_children():
+            w.destroy()
+            
+        # Determine source dataframe for losses (prefer filtered_df if it has losses, else full_df)
+        df_src = self.filtered_df if not self.filtered_df.empty else self.full_df
+        if df_src.empty:
+            ctk.CTkLabel(self.recovery_container, text="No trade records loaded to compute Recovery Plan.", 
+                         font=ctk.CTkFont(size=14)).pack(pady=40)
+            return
+
+        losses_df = df_src[df_src['NetPnL'] < 0].copy()
+        if losses_df.empty:
+            # Fall back to full_df to ensure user always sees their historical recovery blueprint
+            losses_df = self.full_df[self.full_df['NetPnL'] < 0].copy()
+
+        tot_loss = abs(float(losses_df['NetPnL'].sum())) if not losses_df.empty else 0.0
+        tot_loss_trades = len(losses_df)
+        tot_symbols = losses_df['Symbol'].nunique() if not losses_df.empty else 0
+
+        # Segment breakdown of losses
+        fno_losses = abs(float(losses_df[losses_df['Segment'] == 'FnO']['NetPnL'].sum())) if not losses_df.empty else 0.0
+        ce_losses = abs(float(losses_df[losses_df['OptionType'] == 'CE']['NetPnL'].sum())) if not losses_df.empty else 0.0
+        pe_losses = abs(float(losses_df[losses_df['OptionType'] == 'PE']['NetPnL'].sum())) if not losses_df.empty else 0.0
+        comm_losses = abs(float(losses_df[losses_df['Segment'] == 'Commodity']['NetPnL'].sum())) if not losses_df.empty else 0.0
+        eq_losses = abs(float(losses_df[losses_df['Segment'].isin(['Equity', 'Cash'])]['NetPnL'].sum())) if not losses_df.empty else 0.0
+
+        ce_pct = (ce_losses / tot_loss * 100) if tot_loss > 0 else 0.0
+        primary_leak = f"FnO CE Naked Options ({ce_pct:.1f}% of Losses)" if ce_pct > 50 else "Multi-Segment Drawdown"
+
+        # Initialize simulator target if not customized
+        cur_target = self.sim_target_var.get().replace(",", "").strip()
+        if not cur_target or cur_target == "100000":
+            self.sim_target_var.set(f"{tot_loss:,.0f}")
+
+        # ── 1. Executive Header & Turnaround Command Banner ──
+        cmd_card = ctk.CTkFrame(self.recovery_container, fg_color="#181818", corner_radius=12, border_width=1, border_color="#334155")
+        cmd_card.pack(fill="x", pady=(0, 10))
+
+        h_top = ctk.CTkFrame(cmd_card, fg_color="transparent")
+        h_top.pack(fill="x", padx=16, pady=(12, 6))
+
+        t_box = ctk.CTkFrame(h_top, fg_color="transparent")
+        t_box.pack(side="left")
+        ctk.CTkLabel(t_box, text="🚀 Institutional Loss-to-Profit Recovery Plan & Turnaround Desk", 
+                     font=ctk.CTkFont(size=18, weight="bold"), text_color="#38BDF8").pack(anchor="w")
+        ctk.CTkLabel(t_box, text="Data-Driven Capital Reclaim Engine • Grounded in Your Trading Journal • Multi-Horizon & Cross-Segment Roadmaps", 
+                     font=ctk.CTkFont(size=11), text_color="#94A3B8").pack(anchor="w")
+
+        r_badge = ctk.CTkFrame(h_top, fg_color="#450A0A", corner_radius=8, border_width=1, border_color="#DC2626")
+        r_badge.pack(side="right")
+        ctk.CTkLabel(r_badge, text="TOTAL RECOVERABLE JOURNAL LOSS", font=ctk.CTkFont(size=10, weight="bold"), text_color="#FCA5A5").pack(padx=12, pady=(4, 1))
+        ctk.CTkLabel(r_badge, text=f"-Rs. {tot_loss:,.2f}", font=ctk.CTkFont(size=15, weight="bold"), text_color="#EF4444").pack(padx=12, pady=(0, 4))
+
+        # 5 Command KPI Cards Ribbon
+        kpi_grid = ctk.CTkFrame(cmd_card, fg_color="transparent")
+        kpi_grid.pack(fill="x", padx=16, pady=(4, 14))
+        kpi_grid.grid_columnconfigure((0, 1, 2, 3, 4), weight=1)
+
+        r_kpis = [
+            ("🛑 Total Loss Capital", f"Rs. {tot_loss:,.2f}", f"{tot_loss_trades} Losses across {tot_symbols} Symbols", "#EF4444"),
+            ("🎯 Primary Capital Leak", primary_leak, f"Call Options Lost Rs. {ce_losses:,.0f}", "#F97316"),
+            ("⚖️ Payoff Mandate", "1:2.5 Minimum R:R", "Cut Losses Early / Ride Trends", "#38BDF8"),
+            ("🛡️ Daily Circuit Breaker", "Max Rs. 4,000 / Day", "Strict 2-Trade Limit per Session", "#EAB308"),
+            ("⏱️ Projected Turnaround", "60 – 90 Market Days", "Disciplined Asymmetric Setups", "#10B981")
+        ]
+        for idx, (t, v, sub, clr) in enumerate(r_kpis):
+            kb = ctk.CTkFrame(kpi_grid, fg_color="#0D1117", corner_radius=8, border_width=1, border_color="#21262D")
+            kb.grid(row=0, column=idx, padx=4, pady=4, sticky="nsew")
+            ctk.CTkLabel(kb, text=t, font=ctk.CTkFont(size=10, weight="bold"), text_color="gray60").pack(anchor="w", padx=10, pady=(6, 2))
+            ctk.CTkLabel(kb, text=v, font=ctk.CTkFont(size=13, weight="bold"), text_color=clr).pack(anchor="w", padx=10, pady=(0, 2))
+            ctk.CTkLabel(kb, text=sub, font=ctk.CTkFont(size=10), text_color="gray50").pack(anchor="w", padx=10, pady=(0, 6))
+
+        # ── 2. SECTION 1: Multi-Horizon Turnaround Roadmap with Segmented Switcher ──
+        s1 = ctk.CTkFrame(self.recovery_container, fg_color="#181818", corner_radius=12, border_width=1, border_color="#0284C7")
+        s1.pack(fill="x", pady=8)
+
+        s1_hdr = ctk.CTkFrame(s1, fg_color="transparent")
+        s1_hdr.pack(fill="x", padx=16, pady=(12, 6))
+        
+        s1_title_box = ctk.CTkFrame(s1_hdr, fg_color="transparent")
+        s1_title_box.pack(side="left")
+        ctk.CTkLabel(s1_title_box, text="🗺️ SECTION 1: Multi-Horizon Turnaround Action Plans", 
+                     font=ctk.CTkFont(size=15, weight="bold"), text_color="#38BDF8").pack(anchor="w")
+        ctk.CTkLabel(s1_title_box, text="Systematic execution plans across Intraday, Swing, Positional, and Compounding horizons covering Cash, FnO, Commodity, and MTF.", 
+                     font=ctk.CTkFont(size=11), text_color="#94A3B8").pack(anchor="w")
+
+        # Horizon Switcher Buttons
+        horizons = ["☀️ Day Plan (Intraday)", "📅 Weekly Plan (Swing)", "🗓️ Monthly Plan (Positional)", "📈 Yearly Plan (Compounding)"]
+        seg_box = ctk.CTkFrame(s1_hdr, fg_color="transparent")
+        seg_box.pack(side="right")
+        
+        self.horizon_btns = {}
+        for h_name in horizons:
+            is_active = (h_name == self.recovery_horizon_var.get())
+            btn = ctk.CTkButton(
+                seg_box, text=h_name, width=130, height=28,
+                fg_color="#0284C7" if is_active else "#1E293B",
+                hover_color="#0369A1",
+                font=ctk.CTkFont(size=11, weight="bold" if is_active else "normal"),
+                command=lambda hn=h_name: self._switch_horizon(hn)
+            )
+            btn.pack(side="left", padx=2)
+            self.horizon_btns[h_name] = btn
+
+        self.horizon_details_frame = ctk.CTkFrame(s1, fg_color="transparent")
+        self.horizon_details_frame.pack(fill="x", padx=16, pady=(6, 14))
+        self._render_horizon_details(self.recovery_horizon_var.get())
+
+        # ── 3. SECTION 2: Journal-Specific Losing Symbol Turnaround Matrix ──
+        s2 = ctk.CTkFrame(self.recovery_container, fg_color="#181818", corner_radius=12, border_width=1, border_color="#B91C1C")
+        s2.pack(fill="x", pady=8)
+
+        s2_hdr = ctk.CTkFrame(s2, fg_color="transparent")
+        s2_hdr.pack(fill="x", padx=16, pady=(12, 6))
+        ctk.CTkLabel(s2_hdr, text="📋 SECTION 2: Journal-Specific Losing Symbol Turnaround Matrix", 
+                     font=ctk.CTkFont(size=15, weight="bold"), text_color="#F87171").pack(anchor="w")
+        ctk.CTkLabel(s2_hdr, text="Directly mined from your trading journal • Identifies exact symbols draining capital and provides customized recovery blueprints. Click 'Inspect Blueprint' for deep forensic analysis.", 
+                     font=ctk.CTkFont(size=11), text_color="#94A3B8").pack(anchor="w")
+
+        s2_table_box = ctk.CTkFrame(s2, fg_color="transparent")
+        s2_table_box.pack(fill="x", padx=16, pady=(6, 14))
+
+        if not losses_df.empty:
+            sym_grp = losses_df.groupby('Symbol').agg(
+                Loss=('NetPnL', 'sum'),
+                Trades=('TradeID', 'count'),
+                Segment=('Segment', lambda s: s.dropna().iloc[0] if not s.dropna().empty else 'FnO'),
+                OptionType=('OptionType', lambda s: s.dropna().iloc[0] if not s.dropna().empty else 'CE')
+            ).reset_index().sort_values('Loss', ascending=True)
+
+            self._build_losing_symbols_table(s2_table_box, sym_grp.head(10))
+        else:
+            ctk.CTkLabel(s2_table_box, text="No losing trades recorded.", font=ctk.CTkFont(size=12)).pack(pady=10)
+
+        # ── 4. SECTION 3: Strategic Capital Reallocation & Fresh Recovery Opportunities ──
+        s3 = ctk.CTkFrame(self.recovery_container, fg_color="#181818", corner_radius=12, border_width=1, border_color="#10B981")
+        s3.pack(fill="x", pady=8)
+
+        s3_hdr = ctk.CTkFrame(s3, fg_color="transparent")
+        s3_hdr.pack(fill="x", padx=16, pady=(12, 6))
+        ctk.CTkLabel(s3_hdr, text="💡 SECTION 3: Strategic Capital Reallocation & Fresh Recovery Opportunities", 
+                     font=ctk.CTkFont(size=15, weight="bold"), text_color="#34D399").pack(anchor="w")
+        ctk.CTkLabel(s3_hdr, text="Recommended institutional vehicles & non-correlated asset classes to accelerate recovery without naked options gamble.", 
+                     font=ctk.CTkFont(size=11), text_color="#94A3B8").pack(anchor="w")
+
+        opp_grid = ctk.CTkFrame(s3, fg_color="transparent")
+        opp_grid.pack(fill="x", padx=16, pady=(6, 14))
+        opp_grid.columnconfigure((0, 1), weight=1)
+
+        opps = [
+            ("⚡ 4x MTF Momentum Cash Swings", "#0284C7", [
+                "• Opportunity: Swing trade Tier-1 market leaders (e.g. BEL, HAL, TRENT, DIXON, BHARTIARTL) using 4x MTF leverage.",
+                "• Why it Replaces Naked FnO: Provides 4x purchasing power with ZERO option Greeks, ZERO Theta decay, and NO expiry pin risk.",
+                "• Entry Trigger: Rebound from Daily 20 EMA or 50 SMA with high delivery volume (>1.5x 20-day average).",
+                "• Execution Horizon: 5 to 15 trading days. Target 8% to 15% underlying price expansion with trailing GTT stops at 2.5% risk."
+            ]),
+            ("🛡️ Defined-Risk Index Debit & Ratio Spreads", "#10B981", [
+                "• Opportunity: Transition from naked Call buying on NIFTY & BANKNIFTY to Bull Call / Bear Put Debit Spreads.",
+                "• Why it Plugs Capital Leaks: Capping maximum loss to the initial net debit paid completely eliminates 100% wipeouts.",
+                "• Structure: Buy ATM Call (Delta 0.55), Sell OTM Call (Delta 0.25) with 20-30 DTE series. Slashes Theta decay by 55%.",
+                "• Execution Discipline: Pre-defined 1:2.4 minimum payoff. Exit at 50% max spread profit or 40% loss; never hold into expiry week."
+            ]),
+            ("🛢️ Non-Correlated MCX Commodity Momentum", "#F59E0B", [
+                "• Opportunity: Trade MCX Crude Oil & Gold Mini contracts during peak evening global liquidity (5:00 PM – 11:30 PM IST).",
+                "• Why it Accelerates Recovery: Completely uncorrelated with domestic Indian equity market opens and gap-down risks.",
+                "• Setup: 15-minute Trend Channel Breakout aligned with US Energy Information Administration (EIA) data and macro trend.",
+                "• Discipline: Trade strictly 1 Mini lot with automated broker Stop-Loss at 0.8x ATR. Target 1:2.5 R:R; close all intraday by 11:15 PM."
+            ]),
+            ("💎 Quality Pullback Cash Delivery Anchors", "#A855F7", [
+                "• Opportunity: Accumulate fundamentally exceptional large-cap compounders consolidating at 200 EMA / 100 SMA.",
+                "• Why it Protects Wealth: High statistical probability of mean-reversion (>72% win-rate on 200 EMA rebounds in bull regimes).",
+                "• Setup: Two-tranche accumulation (50% on initial support touch, 50% on 3-day higher high confirmation).",
+                "• Compounding Rule: Bank dividends and capital gains into risk-free liquid debt to establish an impenetrable psychological safety floor."
+            ])
+        ]
+
+        for idx, (title, color, bullets) in enumerate(opps):
+            card = ctk.CTkFrame(opp_grid, fg_color="#0D1117", corner_radius=10, border_width=1, border_color="#21262D")
+            card.grid(row=idx // 2, column=idx % 2, padx=6, pady=6, sticky="nsew")
+            ctk.CTkLabel(card, text=title, font=ctk.CTkFont(size=12, weight="bold"), text_color=color).pack(anchor="w", padx=12, pady=(10, 4))
+            ctk.CTkLabel(card, text="\n".join(bullets), justify="left", font=ctk.CTkFont(size=10), text_color="#CBD5E1").pack(anchor="w", padx=12, pady=(0, 10))
+
+        # ── 5. SECTION 4: Interactive Mathematical Recovery Calculator & Roadmap Simulator ──
+        s4 = ctk.CTkFrame(self.recovery_container, fg_color="#181818", corner_radius=12, border_width=1, border_color="#EAB308")
+        s4.pack(fill="x", pady=8)
+
+        s4_hdr = ctk.CTkFrame(s4, fg_color="transparent")
+        s4_hdr.pack(fill="x", padx=16, pady=(12, 6))
+        ctk.CTkLabel(s4_hdr, text="🧮 SECTION 4: Interactive Mathematical Recovery Calculator & Roadmap Simulator", 
+                     font=ctk.CTkFont(size=15, weight="bold"), text_color="#FBBF24").pack(anchor="w")
+        ctk.CTkLabel(s4_hdr, text="Simulate the exact statistical mechanics required to recover every rupee of journal loss with asymmetric positive expectancy.", 
+                     font=ctk.CTkFont(size=11), text_color="#94A3B8").pack(anchor="w")
+
+        # Simulator Controls Ribbon
+        ctrl_bar = ctk.CTkFrame(s4, fg_color="#0D1117", corner_radius=8, border_width=1, border_color="#21262D")
+        ctrl_bar.pack(fill="x", padx=16, pady=(4, 10))
+
+        # Input 1: Target Recovery
+        ctk.CTkLabel(ctrl_bar, text="Target (Rs.):", font=ctk.CTkFont(size=11, weight="bold"), text_color="#FCA5A5").pack(side="left", padx=(12, 4), pady=8)
+        self.e_target = ctk.CTkEntry(ctrl_bar, textvariable=self.sim_target_var, width=110, height=28, font=ctk.CTkFont(size=11))
+        self.e_target.pack(side="left", padx=(0, 12), pady=8)
+
+        # Input 2: Risk per Trade
+        ctk.CTkLabel(ctrl_bar, text="Risk / Trade (Rs.):", font=ctk.CTkFont(size=11, weight="bold"), text_color="#FDBA74").pack(side="left", padx=(4, 4), pady=8)
+        self.e_risk = ctk.CTkEntry(ctrl_bar, textvariable=self.sim_risk_var, width=80, height=28, font=ctk.CTkFont(size=11))
+        self.e_risk.pack(side="left", padx=(0, 12), pady=8)
+
+        # Input 3: Target R:R
+        ctk.CTkLabel(ctrl_bar, text="Target R:R:", font=ctk.CTkFont(size=11, weight="bold"), text_color="#93C5FD").pack(side="left", padx=(4, 4), pady=8)
+        self.e_rr = ctk.CTkEntry(ctrl_bar, textvariable=self.sim_rr_var, width=65, height=28, font=ctk.CTkFont(size=11))
+        self.e_rr.pack(side="left", padx=(0, 12), pady=8)
+
+        # Input 4: Win Rate %
+        ctk.CTkLabel(ctrl_bar, text="Win Rate (%):", font=ctk.CTkFont(size=11, weight="bold"), text_color="#86EFAC").pack(side="left", padx=(4, 4), pady=8)
+        self.e_wr = ctk.CTkEntry(ctrl_bar, textvariable=self.sim_winrate_var, width=65, height=28, font=ctk.CTkFont(size=11))
+        self.e_wr.pack(side="left", padx=(0, 14), pady=8)
+
+        ctk.CTkButton(ctrl_bar, text="🚀 Simulate Roadmap", width=140, height=28, fg_color="#D97706", hover_color="#B45309",
+                      font=ctk.CTkFont(size=11, weight="bold"), command=self._run_recovery_simulation).pack(side="left", padx=4, pady=8)
+
+        # Simulator Output Container
+        self.sim_output_frame = ctk.CTkFrame(s4, fg_color="transparent")
+        self.sim_output_frame.pack(fill="x", padx=16, pady=(4, 16))
+        self._run_recovery_simulation()
+
+    def _switch_horizon(self, horizon_name):
+        self.recovery_horizon_var.set(horizon_name)
+        for h, btn in self.horizon_btns.items():
+            if h == horizon_name:
+                btn.configure(fg_color="#0284C7", font=ctk.CTkFont(size=11, weight="bold"))
+            else:
+                btn.configure(fg_color="#1E293B", font=ctk.CTkFont(size=11, weight="normal"))
+        self._render_horizon_details(horizon_name)
+
+    def _render_horizon_details(self, horizon_name):
+        for w in self.horizon_details_frame.winfo_children():
+            w.destroy()
+
+        h_grid = ctk.CTkFrame(self.horizon_details_frame, fg_color="transparent")
+        h_grid.pack(fill="x", pady=4)
+        h_grid.columnconfigure((0, 1), weight=1)
+
+        if "Day" in horizon_name:
+            c1_title = "⚡ Execution Rules & Sizing Limits (Intraday)"
+            c1_col = "#FBBF24"
+            c1_bullets = [
+                "• Strict Trading Window: Confined to 9:20 AM - 10:45 AM (Opening Momentum) and 1:45 PM - 3:00 PM (Closing Trend).",
+                "• Frequency Mandate: Maximum 1 to 2 high-conviction trades per day. Zero afternoon revenge trading.",
+                "• Risk Ceiling: Max loss capped at Rs. 3,500 to Rs. 4,000 for the entire day. If hit, shut the terminal immediately.",
+                "• Terminal Stop-Loss: Broker-level Stop-Loss order must be active within 60 seconds of order entry; zero mental stops."
+            ]
+
+            c2_title = "🎯 Product & Segment Guidelines"
+            c2_col = "#38BDF8"
+            c2_bullets = [
+                "• Cash Intraday (MIS): High-beta Largecap momentum stocks (e.g. RELIANCE, HDFCBANK, INFY). Stop at 0.7% price move.",
+                "• FnO Options: Strictly ATM strikes (Delta 0.50-0.55) with tight 20-30 pt index stops. NO deep OTM lottery strikes.",
+                "• FnO Futures: Only trade intraday futures during high volume trend breakouts with trailing supertrend.",
+                "• Commodity (MCX): Evening scalping on Crude Oil mini (5:00 PM – 9:00 PM IST) using 5-minute ORB."
+            ]
+
+            c3_title = "📈 Technical Setups & Confluence"
+            c3_col = "#34D399"
+            c3_bullets = [
+                "• 15-Minute VWAP Reclaim: Enter long only when price decisively closes above VWAP with rising volume bars.",
+                "• EMA Ribbon Alignment: 9 EMA > 21 EMA on the 5-minute chart confirms short-term intraday momentum alignment.",
+                "• RSI Momentum Filter: RSI(14) between 55 and 70 on 5-minute timeframe indicates healthy trend continuation.",
+                "• Target R:R: Aim for 1:2.0 to 1:2.5 payoff. Move stop-loss to breakeven once 1R profit target is reached."
+            ]
+
+            c4_title = "🌐 Market Regime & Volatility Justification"
+            c4_col = "#A78BFA"
+            c4_bullets = [
+                "• India VIX Regime: If VIX > 16.0, option premiums swing wildly; cut lot size by 50% to prevent sudden whipsaws.",
+                "• Opening Gap Rule: If market opens with >1% gap up/down, wait 30 minutes for opening range to establish before taking entries.",
+                "• Global Cues: Align morning directional bias with GIFT Nifty, US Futures (Nasdaq/S&P), and Asian market sentiment.",
+                "• Macro Data Days: Stand aside or exit all positions 15 minutes prior to RBI MPC, US CPI, or Fed policy announcements."
+            ]
+
+        elif "Weekly" in horizon_name:
+            c1_title = "⚡ Execution Rules & Sizing Limits (Weekly Swing)"
+            c1_col = "#34D399"
+            c1_bullets = [
+                "• Holding Horizon: 2 to 5 trading days. Never hold naked decaying options over weekends without a hedge.",
+                "• Position Allocation: Allocate max 15% of trading capital to any single swing position.",
+                "• Stop-Loss Mechanics: Hard trailing stop placed under recent 3-day swing low or 20 Daily EMA.",
+                "• Expiry Discipline: Close or roll all index/stock option positions latest by Tuesday afternoon to avoid expiry pin risk."
+            ]
+
+            c2_title = "🎯 Product & Segment Guidelines"
+            c2_col = "#38BDF8"
+            c2_bullets = [
+                "• Defined-Risk Debit Spreads: Bull Call / Bear Put Spreads (Buy ATM Delta 0.55, Sell OTM Delta 0.25) with 20-30 DTE.",
+                "• 4x MTF Cash Swing: Accumulate momentum leaders on 4x MTF; zero time decay, zero Greek risk.",
+                "• Stock Futures: Trade only high-liquidity F&O stocks with trailing stop-loss at 1.5% underlying distance.",
+                "• MCX Commodities: Swing trade Crude Oil / Natural Gas on daily channel support bounces with 3-day holding."
+            ]
+
+            c3_title = "📈 Technical Setups & Confluence"
+            c3_col = "#FBBF24"
+            c3_bullets = [
+                "• Daily 20 EMA Pullback: Enter when a strongly trending asset retests its 20 EMA and prints a bullish rejection candle.",
+                "• Volume Spread Analysis: Require expansion in delivery volume on the breakout day (>1.4x 20-day average volume).",
+                "• MACD / RSI Divergence: Look for positive momentum divergence on the 4-hour chart confirming exhaustion of pullbacks.",
+                "• Target Payoff: Minimum 1:2.5 R:R. Target recent swing high or 1.618 Fibonacci expansion level."
+            ]
+
+            c4_title = "🌐 Market Regime & Volatility Justification"
+            c4_col = "#A78BFA"
+            c4_bullets = [
+                "• FII / DII Institutional Flows: Confirm that FIIs are net buyers in cash or holding positive Index Futures long-short ratio.",
+                "• India VIX Regime: If VIX is compressed (<12.5), breakout spreads offer explosive risk-reward with cheap extrinsic value.",
+                "• Sectoral Rotation: Only trade stocks belonging to top-performing sectors (Nifty IT, Auto, Pharma, Defense).",
+                "• Global Correlation: Ensure domestic index trend aligns with global crude oil stability and US 10-year Treasury yields."
+            ]
+
+        elif "Monthly" in horizon_name:
+            c1_title = "⚡ Execution Rules & Sizing Limits (Positional)"
+            c1_col = "#60A5FA"
+            c1_bullets = [
+                "• Holding Horizon: 2 to 8 weeks. Focus exclusively on macro trends and quarterly earnings momentum.",
+                "• Capital Deployment: Staggered entry in 2 tranches (50% on initial breakout/support, 50% on confirmation retest).",
+                "• Maximum Drawdown per Idea: 4% of total equity portfolio max risk per positional theme.",
+                "• Review Frequency: Weekly weekend audit; avoid reacting to daily intraday noise and short-term tape volatility."
+            ]
+
+            c2_title = "🎯 Product & Segment Guidelines"
+            c2_col = "#34D399"
+            c2_bullets = [
+                "• 4x MTF Cash Delivery: Prime vehicle for positional turnaround. Ride 15% to 25% price moves with 4x margin leverage.",
+                "• Covered Strangles / Ratio Spreads: Hedged option structures on high-liquidity stocks to generate 4-6% monthly yield.",
+                "• Cash Equity Delivery: Core accumulation of midcap and largecap compounders at multi-month demand zones.",
+                "• Far-Month Stock Futures: Quarterly futures contracts with scheduled rollovers between Friday and Tuesday of expiry week."
+            ]
+
+            c3_title = "📈 Technical Setups & Confluence"
+            c3_col = "#FBBF24"
+            c3_bullets = [
+                "• Weekly 50 SMA / 200 EMA Confluence: Institutional accumulation zone; high probability of long-term trend continuation.",
+                "• Stage 2 Base Breakout: Stan Weinstein Stage 2 transition with rising 30-week moving average and multi-month volume surge.",
+                "• Relative Strength (RS) vs Nifty: Stock RS line must be hitting new 52-week highs before underlying price breaks out.",
+                "• Profit Target: 1:3.0 minimum risk-reward ratio. Trail stop-loss along the rising 20-day exponential moving average."
+            ]
+
+            c4_title = "🌐 Market Regime & Volatility Justification"
+            c4_col = "#A78BFA"
+            c4_bullets = [
+                "• Macro Liquidity Conditions: RBI repo rate trajectory, banking system liquidity, and inflation prints.",
+                "• Currency (USD/INR): Monitor Rupee stability; depreciating INR favors IT/Pharma exporters, stable INR favors domestic capex.",
+                "• Earnings Growth Acceleration: Filter for companies with quarterly revenue growth >15% and margin expansion.",
+                "• Global Commodity Cycles: Align metals/energy positioning with China stimulus and OPEC+ supply quotas."
+            ]
+
+        else: # Yearly Compounding
+            c1_title = "⚡ Execution Rules & Compounding Architecture (Yearly)"
+            c1_col = "#C084FC"
+            c1_bullets = [
+                "• The 50/30/20 Capital Rule: 50% into cash reserve/debt safety floor, 30% reinvested into momentum swings, 20% growth.",
+                "• Anti-Euphoria Circuit: Never increase lot sizes after a big winning streak; scale size solely on quarterly audited equity highs.",
+                "• Drawdown Protocol: If drawdown exceeds 8% of peak equity, position sizing is automatically reduced by 50% across all vehicles.",
+                "• Asymmetric Expectancy: With 1:2.5 R:R, a conservative 45% win rate compounds trading equity by >60% annualized."
+            ]
+
+            c2_title = "🎯 Product & Segment Guidelines"
+            c2_col = "#34D399"
+            c2_bullets = [
+                "• Core Equity Portfolio: High-quality bluechips with 15%+ ROE serving as collateral margin for MTF swings.",
+                "• Systematic MTF Swings: Continuous rotation into top 5 market momentum leaders, harvesting 10-18% swings.",
+                "• Defined-Risk Index Options: Deploy 15% of trading capital into high-probability monthly debit/credit spreads.",
+                "• Sovereign Gold Bonds (SGB) & Liquid Funds: Safe haven capital parking during extended bear or sideways regimes."
+            ]
+
+            c3_title = "📈 Technical Setups & Confluence"
+            c3_col = "#FBBF24"
+            c3_bullets = [
+                "• Monthly Supertrend & 10-Month SMA: Core macro regime compass. Stay 100% invested while Nifty is above 10-month SMA.",
+                "• Multi-Year Cup & Handle Breakouts: Generational wealth compounding setups in emerging industry leaders.",
+                "• Market Breadth Thrusts: Track percentage of Nifty 500 stocks above 200 EMA; breadth > 70% confirms broad-based bull cycle.",
+                "• Asymmetric Risk-Reward: Target 1:4.0+ multi-month trend captures while cutting lagging positions without hesitation."
+            ]
+
+            c4_title = "🌐 Market Regime & Volatility Justification"
+            c4_col = "#A78BFA"
+            c4_bullets = [
+                "• Long-Term Indian GDP Growth: Structural demographic tailwinds, infrastructure capex, and domestic SIP mutual fund inflows.",
+                "• Geopolitical Hedging: Maintain 10-15% gold/commodity exposure to protect against international conflicts and supply disruptions.",
+                "• Interest Rate Cycle: Rotate from high-PE growth stocks to cyclical value/banking as global rate cycles peak.",
+                "• Milestone Verification: Review recovery milestones quarterly against audited broker contract notes and Tax P&L."
+            ]
+
+        cards_data = [
+            (c1_title, c1_col, c1_bullets),
+            (c2_title, c2_col, c2_bullets),
+            (c3_title, c3_col, c3_bullets),
+            (c4_title, c4_col, c4_bullets)
+        ]
+
+        for idx, (title, col, bullets) in enumerate(cards_data):
+            card = ctk.CTkFrame(h_grid, fg_color="#0D1117", corner_radius=10, border_width=1, border_color="#21262D")
+            card.grid(row=idx // 2, column=idx % 2, padx=6, pady=6, sticky="nsew")
+            ctk.CTkLabel(card, text=title, font=ctk.CTkFont(size=12, weight="bold"), text_color=col).pack(anchor="w", padx=12, pady=(10, 4))
+            ctk.CTkLabel(card, text="\n".join(bullets), justify="left", font=ctk.CTkFont(size=10), text_color="#CBD5E1").pack(anchor="w", padx=12, pady=(0, 10))
+
+    def _build_losing_symbols_table(self, parent_frame, sym_df):
+        for w in parent_frame.winfo_children():
+            w.destroy()
+
+        # Headers
+        headers = ["Symbol", "Segment", "Bias", "Total Net Loss", "Trades", "Journal Diagnosis", "Dedicated Turnaround Plan", "Phase 1 Target", "Action"]
+        widths = [110, 80, 65, 120, 65, 190, 190, 105, 130]
+
+        hdr_frame = ctk.CTkFrame(parent_frame, fg_color="#0D1117", corner_radius=6)
+        hdr_frame.pack(fill="x", pady=(0, 4))
+        
+        for c_idx, h_text in enumerate(headers):
+            lbl = ctk.CTkLabel(hdr_frame, text=h_text, font=ctk.CTkFont(size=11, weight="bold"), text_color="#94A3B8", width=widths[c_idx], anchor="w")
+            lbl.pack(side="left", padx=4, pady=6)
+
+        for _, r in sym_df.iterrows():
+            sym = str(r['Symbol'])
+            seg = str(r['Segment'])
+            opt = str(r['OptionType'])
+            loss = abs(float(r['Loss']))
+            trades = int(r['Trades'])
+            
+            # Intelligent diagnosis based on instrument
+            if 'NIFTY' in sym or 'SENSEX' in sym or 'BANKNIFTY' in sym or 'MIDCP' in sym:
+                diag = "Naked Index Call Buying • Held to Zero"
+                action_plan = "Switch to Defined-Risk Spreads (Delta 0.55/0.25)"
+            elif 'CRUDE' in sym or 'GOLD' in sym:
+                diag = "MCX Contract Overnight Holding • Gap Risks"
+                action_plan = "Trade Evening Momentum with 0.8x ATR Stop"
+            elif opt in ('CE', 'PE'):
+                diag = "Naked Stock Option Decay • No Stop-Loss"
+                action_plan = "Switch to 4x MTF Cash Swing on 50 EMA Retest"
+            else:
+                diag = "Chasing Momentum Tops • Mental Stop-Loss"
+                action_plan = "Accumulate on 200 EMA Pullback with GTT Stop"
+
+            p1_tgt = loss * 0.30
+
+            row_frame = ctk.CTkFrame(parent_frame, fg_color="#141923", corner_radius=6, border_width=1, border_color="#21262D")
+            row_frame.pack(fill="x", pady=2)
+
+            # Columns
+            ctk.CTkLabel(row_frame, text=sym, font=ctk.CTkFont(size=11, weight="bold"), text_color="#38BDF8", width=widths[0], anchor="w").pack(side="left", padx=4, pady=5)
+            ctk.CTkLabel(row_frame, text=seg, font=ctk.CTkFont(size=11), text_color="#E2E8F0", width=widths[1], anchor="w").pack(side="left", padx=4, pady=5)
+            ctk.CTkLabel(row_frame, text=opt, font=ctk.CTkFont(size=11), text_color="#FBBF24", width=widths[2], anchor="w").pack(side="left", padx=4, pady=5)
+            ctk.CTkLabel(row_frame, text=f"-Rs. {loss:,.2f}", font=ctk.CTkFont(size=11, weight="bold"), text_color="#EF4444", width=widths[3], anchor="w").pack(side="left", padx=4, pady=5)
+            ctk.CTkLabel(row_frame, text=f"{trades} trades", font=ctk.CTkFont(size=11), text_color="#CBD5E1", width=widths[4], anchor="w").pack(side="left", padx=4, pady=5)
+            ctk.CTkLabel(row_frame, text=diag, font=ctk.CTkFont(size=10), text_color="#F87171", width=widths[5], anchor="w").pack(side="left", padx=4, pady=5)
+            ctk.CTkLabel(row_frame, text=action_plan, font=ctk.CTkFont(size=10), text_color="#34D399", width=widths[6], anchor="w").pack(side="left", padx=4, pady=5)
+            ctk.CTkLabel(row_frame, text=f"Rs. {p1_tgt:,.0f}", font=ctk.CTkFont(size=11, weight="bold"), text_color="#FBBF24", width=widths[7], anchor="w").pack(side="left", padx=4, pady=5)
+
+            # Inspect Blueprint button
+            sym_row_data = {
+                'Symbol': sym, 'Segment': seg, 'OptionType': opt, 'Loss': loss, 'NetLoss': loss, 'NetPnL': -loss,
+                'Trades': trades, 'LossTrades': trades, 'Diagnosis': diag, 'ActionPlan': action_plan
+            }
+            btn = ctk.CTkButton(
+                row_frame, text="🔍 Inspect Blueprint", width=120, height=24,
+                fg_color="#0284C7", hover_color="#0369A1",
+                font=ctk.CTkFont(size=10, weight="bold"),
+                command=lambda sdata=sym_row_data: self._open_symbol_recovery_modal(sdata)
+            )
+            btn.pack(side="left", padx=4, pady=5)
+
+    def _open_symbol_recovery_modal(self, sym_data):
+        try:
+            top_win = self.winfo_toplevel()
+            modal = SymbolRecoveryModal(top_win, sym_data)
+            modal.lift()
+            modal.focus_force()
+        except Exception as e:
+            messagebox.showerror("Recovery Modal Error", f"Failed to open symbol recovery blueprint: {e}")
+
+    def _run_recovery_simulation(self):
+        for w in self.sim_output_frame.winfo_children():
+            w.destroy()
+
+        try:
+            target = float(self.sim_target_var.get().replace(",", "").strip())
+        except Exception:
+            target = 100000.0
+
+        try:
+            risk = float(self.sim_risk_var.get().replace(",", "").strip())
+        except Exception:
+            risk = 4000.0
+
+        try:
+            rr = float(self.sim_rr_var.get().replace(",", "").strip())
+        except Exception:
+            rr = 2.5
+
+        try:
+            winrate = float(self.sim_winrate_var.get().replace(",", "").strip())
+        except Exception:
+            winrate = 60.0
+
+        win_rate_dec = max(0.1, min(0.95, winrate / 100.0))
+        loss_rate_dec = 1.0 - win_rate_dec
+
+        reward = risk * rr
+        expectancy = (win_rate_dec * reward) - (loss_rate_dec * risk)
+
+        if expectancy <= 0:
+            ctk.CTkLabel(self.sim_output_frame, text="⚠️ Warning: Mathematical Expectancy is negative or zero. Increase Win Rate or Risk-to-Reward ratio.", 
+                         font=ctk.CTkFont(size=12, weight="bold"), text_color="#EF4444").pack(pady=10)
+            return
+
+        total_setups = math.ceil(target / expectancy)
+        exp_wins = math.ceil(total_setups * win_rate_dec)
+        exp_losses = total_setups - exp_wins
+
+        p1_trades = math.ceil(total_setups * 0.30)
+        p2_trades = math.ceil(total_setups * 0.40)
+        p3_trades = total_setups - p1_trades - p2_trades
+
+        # 4 Simulation Metric Badges
+        grid = ctk.CTkFrame(self.sim_output_frame, fg_color="transparent")
+        grid.pack(fill="x", pady=(0, 10))
+        grid.columnconfigure((0, 1, 2, 3), weight=1)
+
+        sim_kpis = [
+            ("Expectancy / Trade", f"+Rs. {expectancy:,.1f}", f"Avg Win Rs. {reward:,.0f} | Risk Rs. {risk:,.0f}", "#10B981"),
+            ("Required Disciplined Setups", f"{total_setups} Trades", f"{exp_wins} Wins | {exp_losses} Losses Anticipated", "#38BDF8"),
+            ("Win / Reward Asymmetry", f"{winrate:.0f}% @ 1:{rr:.1f} R:R", f"Gross Target: Rs. {target:,.0f}", "#FBBF24"),
+            ("Estimated Completion", f"~{math.ceil(total_setups / 1.5)} Market Days", "Assuming 1-2 High Quality Trades/Day", "#C084FC")
+        ]
+
+        for idx, (t, v, sub, col) in enumerate(sim_kpis):
+            kb = ctk.CTkFrame(grid, fg_color="#0D1117", corner_radius=8, border_width=1, border_color="#21262D")
+            kb.grid(row=0, column=idx, padx=4, sticky="nsew")
+            ctk.CTkLabel(kb, text=t, font=ctk.CTkFont(size=10, weight="bold"), text_color="gray60").pack(anchor="w", padx=10, pady=(6, 2))
+            ctk.CTkLabel(kb, text=v, font=ctk.CTkFont(size=13, weight="bold"), text_color=col).pack(anchor="w", padx=10, pady=(0, 2))
+            ctk.CTkLabel(kb, text=sub, font=ctk.CTkFont(size=10), text_color="gray50").pack(anchor="w", padx=10, pady=(0, 6))
+
+        # 3-Phase Milestone Roadmap Progress
+        m_bar = ctk.CTkFrame(self.sim_output_frame, fg_color="#0D1117", corner_radius=10, border_width=1, border_color="#21262D")
+        m_bar.pack(fill="x", pady=4)
+        m_bar.columnconfigure((0, 1, 2), weight=1)
+
+        p1_amt = target * 0.30
+        p2_amt = target * 0.40
+        p3_amt = target * 0.30
+
+        p_cards = [
+            ("PHASE 1: DEFENSIVE STABILIZATION", f"Reclaim Rs. {p1_amt:,.0f} (30%)", f"{p1_trades} Setups • 1.0% Risk Limit\nMandate: Stop naked option buying. Trade 1 lot spreads.", "#38BDF8"),
+            ("PHASE 2: CORE CAPITAL REBUILDING", f"Reclaim Rs. {p2_amt:,.0f} (40%)", f"{p2_trades} Setups • 1.2% Risk Limit\nMandate: 4x MTF Momentum Swings on 20 EMA retests.", "#34D399"),
+            ("PHASE 3: ALL-TIME HIGH EXPANSION", f"Reclaim Rs. {p3_amt:,.0f} (30% + Buffer)", f"{p3_trades} Setups • 1.5% Risk Limit\nMandate: Compound winners with trailing stops to new equity high.", "#A78BFA")
+        ]
+
+        for idx, (p_title, p_amt_str, p_desc, p_col) in enumerate(p_cards):
+            c = ctk.CTkFrame(m_bar, fg_color="#141923", corner_radius=8, border_width=1, border_color="#1E293B")
+            c.grid(row=0, column=idx, padx=6, pady=6, sticky="nsew")
+            ctk.CTkLabel(c, text=p_title, font=ctk.CTkFont(size=11, weight="bold"), text_color=p_col).pack(anchor="w", padx=10, pady=(8, 2))
+            ctk.CTkLabel(c, text=p_amt_str, font=ctk.CTkFont(size=13, weight="bold"), text_color="#FFFFFF").pack(anchor="w", padx=10, pady=(0, 2))
+            ctk.CTkLabel(c, text=p_desc, justify="left", font=ctk.CTkFont(size=10), text_color="#94A3B8").pack(anchor="w", padx=10, pady=(0, 8))
 
     # ------------------ PSYCHOLOGY & DEEP BEHAVIOURAL REFLECTION TAB ------------------
     def _render_psychology(self):

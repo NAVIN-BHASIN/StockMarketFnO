@@ -1056,9 +1056,15 @@ def ingest_trades_to_db(trades, other_ledgers):
     with get_connection() as conn:
         cursor = conn.cursor()
         
-        # 1. Fetch existing hashes to do lightning-fast in-memory deduplication
-        cursor.execute("SELECT TradeHash FROM TradingJournal_Master")
-        existing_trade_hashes = set(r[0] for r in cursor.fetchall())
+        # 1. Fetch existing hashes and business keys to do ironclad deduplication
+        cursor.execute("SELECT TradeHash, Broker, Segment, Symbol, EntryDate, ExitDate, Quantity, BuyValue, SellValue, GrossPnL FROM TradingJournal_Master")
+        existing_trade_hashes = set()
+        existing_biz_keys = set()
+        for r in cursor.fetchall():
+            if r[0]:
+                existing_trade_hashes.add(r[0])
+            b_key = f"{r[1]}|{r[2]}|{str(r[3]).strip().upper()}|{r[4]}|{r[5]}|{round(float(r[6] or 0), 2)}|{round(float(r[7] or 0), 2)}|{round(float(r[8] or 0), 2)}|{round(float(r[9] or 0), 2)}"
+            existing_biz_keys.add(b_key)
         
         cursor.execute("SELECT LedgerHash FROM TradingJournal_OtherLedger")
         existing_ledger_hashes = set(r[0] for r in cursor.fetchall())
@@ -1084,7 +1090,8 @@ def ingest_trades_to_db(trades, other_ledgers):
         
         for t in trades:
             thash = t['TradeHash']
-            if thash in existing_trade_hashes:
+            b_key = f"{t['Broker']}|{t['Segment']}|{str(t['Symbol']).strip().upper()}|{t['EntryDate']}|{t['ExitDate']}|{round(float(t['Quantity'] or 0), 2)}|{round(float(t['BuyValue'] or 0), 2)}|{round(float(t['SellValue'] or 0), 2)}|{round(float(t['GrossPnL'] or 0), 2)}"
+            if thash in existing_trade_hashes or b_key in existing_biz_keys:
                 skipped_trades += 1
                 continue
                 
@@ -1097,6 +1104,7 @@ def ingest_trades_to_db(trades, other_ledgers):
                 t['FinancialYear'], t['CalYear'], t['CalMonth'], t['Outcome'], t['SourceFile'], t['SourceSheet']
             ))
             existing_trade_hashes.add(thash)
+            existing_biz_keys.add(b_key)
             inserted_trades += 1
             
         # Insert Other Ledgers

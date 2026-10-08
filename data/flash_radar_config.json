@@ -1,5 +1,5 @@
 {
-  "timeframe": "1d",
+  "timeframe": "15m",
   "scan_interval_sec": 900,
   "min_conviction_score": 75,
   "enable_popups": true,

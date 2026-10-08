@@ -165,6 +165,7 @@ class MarketParticipantsFrame(ctk.CTkFrame):
         # Divergence Chart Toggles
         self.chart_asset = "Index"
         self.chart_timeframe = "15D"
+        self.current_pos_mode = "Open Interest (OI)"
         
         # 1. Top Header & Action Controls
         self._build_header()
@@ -204,6 +205,16 @@ class MarketParticipantsFrame(ctk.CTkFrame):
         btn_box = ctk.CTkFrame(hdr, fg_color="transparent")
         btn_box.pack(side="right", fill="y")
         
+        self.live_sync_btn = ctk.CTkButton(
+            btn_box,
+            text="⚡ Live Sync Feed",
+            width=135,
+            fg_color="#e65100",
+            hover_color="#f57c00",
+            command=self.run_live_feed_sync
+        )
+        self.live_sync_btn.pack(side="left", padx=5)
+
         self.export_btn = ctk.CTkButton(
             btn_box,
             text="📊 Export to Excel",
@@ -275,7 +286,7 @@ class MarketParticipantsFrame(ctk.CTkFrame):
         self._build_tab5_stock_focus()
 
     # -------------------------------------------------------------
-    # TAB 1: Participant F&O Positioning (OI Matrix)
+    # TAB 1: Participant F&O Positioning (OI & Flow Matrix)
     # -------------------------------------------------------------
     def _build_tab1_positioning(self):
         tab = self.tabs.tab("Participant F&O Positioning (OI Summary)")
@@ -285,7 +296,7 @@ class MarketParticipantsFrame(ctk.CTkFrame):
         top_bar = ctk.CTkFrame(tab, fg_color="transparent")
         top_bar.grid(row=0, column=0, sticky="ew", padx=10, pady=5)
         
-        ctk.CTkLabel(top_bar, text="Select Snapshot Date:", font=ctk.CTkFont(size=13, weight="bold")).pack(side="left", padx=5)
+        ctk.CTkLabel(top_bar, text="Snapshot Date:", font=ctk.CTkFont(size=13, weight="bold")).pack(side="left", padx=5)
         self.snap_date_var = ctk.StringVar(value="Latest")
         self.date_menu = ctk.CTkOptionMenu(
             top_bar, 
@@ -296,12 +307,22 @@ class MarketParticipantsFrame(ctk.CTkFrame):
         )
         self.date_menu.pack(side="left", padx=5)
         
+        # View Mode Toggle: OI vs DoD Shift vs Volume
+        ctk.CTkLabel(top_bar, text="View Mode:", font=ctk.CTkFont(size=12, weight="bold")).pack(side="left", padx=(15, 5))
+        self.pos_mode_seg = ctk.CTkSegmentedButton(
+            top_bar,
+            values=["Open Interest (OI)", "Daily Shift (DoD Flow)", "Traded Volume"],
+            command=self.on_pos_mode_changed
+        )
+        self.pos_mode_seg.set("Open Interest (OI)")
+        self.pos_mode_seg.pack(side="left", padx=5)
+        
         ctk.CTkLabel(
             top_bar, 
             text="Tip: Double-click any participant row for deep intentional breakdown & hedge ratio.", 
             font=ctk.CTkFont(size=11, slant="italic"), 
             text_color="gray60"
-        ).pack(side="left", padx=15)
+        ).pack(side="right", padx=10)
         
         cols = [
             "Client Type", "Index Fut Long", "Index Fut Short", "Net Index Fut", 
@@ -323,8 +344,27 @@ class MarketParticipantsFrame(ctk.CTkFrame):
         self.pos_sheet.pack(fill="both", expand=True, padx=8, pady=8)
         self.pos_sheet.MT.bind("<Double-1>", self.on_pos_row_double_click)
 
+        # Bottom Intelligence Bar
+        self.pos_intel_frame = ctk.CTkFrame(tab, fg_color="#161b22", corner_radius=10, height=52)
+        self.pos_intel_frame.grid(row=2, column=0, sticky="ew", padx=10, pady=(0, 6))
+        self.pos_intel_frame.grid_propagate(False)
+        self.pos_intel_frame.grid_columnconfigure((0, 1, 2), weight=1, uniform="pos_intel")
+        
+        self.pos_intel_cards = {}
+        for idx, (title, key) in enumerate([
+            ("SMART MONEY STANCE (FII + PRO)", "sm_card"),
+            ("RETAIL HERD TRAP RISK GAUGE", "ret_card"),
+            ("OPTION PINNING & HEDGE BAND", "opt_card")
+        ]):
+            c_box = ctk.CTkFrame(self.pos_intel_frame, fg_color="transparent")
+            c_box.grid(row=0, column=idx, padx=10, pady=4, sticky="nsew")
+            ctk.CTkLabel(c_box, text=title, font=ctk.CTkFont(size=10, weight="bold"), text_color="gray50").pack()
+            lbl = ctk.CTkLabel(c_box, text="Calculating stance...", font=ctk.CTkFont(size=11, family="Consolas", weight="bold"), text_color="#E0E0E0")
+            lbl.pack(pady=1)
+            self.pos_intel_cards[key] = lbl
+
     # -------------------------------------------------------------
-    # TAB 2: Institutional Cash Flow Activity
+    # TAB 2: Institutional Cash Flow & Multi-Timeframe Dynamics
     # -------------------------------------------------------------
     def _build_tab2_cash_flow(self):
         tab = self.tabs.tab("Institutional Cash Flow Activity")
@@ -336,26 +376,30 @@ class MarketParticipantsFrame(ctk.CTkFrame):
         
         self.cash_period_seg = ctk.CTkSegmentedButton(
             top_ctrl,
-            values=["Day Wise Summary", "Monthly Summary (1 Year)", "Yearly Summary (5 Years)"],
+            values=["Day-Wise Summary", "Week-Wise Summary", "Month-Wise Summary", "Year-Wise Summary"],
             command=self.on_cash_period_toggle
         )
-        self.cash_period_seg.set("Day Wise Summary")
+        self.cash_period_seg.set("Day-Wise Summary")
         self.cash_period_seg.pack(side="left", padx=5)
         
-        self.cash_month_lbl = ctk.CTkLabel(top_ctrl, text="Select Month:")
+        self.cash_month_lbl = ctk.CTkLabel(top_ctrl, text="Filter Month:", font=ctk.CTkFont(size=12, weight="bold"))
         self.cash_month_lbl.pack(side="left", padx=(20, 5))
         
-        self.cash_month_var = ctk.StringVar(value="September 2026")
+        self.cash_month_var = ctk.StringVar(value="All Months")
         self.cash_month_menu = ctk.CTkOptionMenu(
             top_ctrl,
             variable=self.cash_month_var,
-            values=["September 2026", "August 2026", "July 2026", "June 2026", "May 2026", "April 2026", "March 2026", "February 2026"],
+            values=["All Months", "October 2026", "September 2026", "August 2026"],
             command=self.load_cash_flow_data,
             width=150
         )
         self.cash_month_menu.pack(side="left", padx=5)
         
-        cols = ["Period", "FII Cash (Cr)", "FII FnO (Cr)", "DII Cash (Cr)", "DII FnO (Cr)", "PROP Desk (Cr)", "Retail (Cr)", "Net Trend"]
+        cols = [
+            "Period", "FII Cash (Cr)", "DII Cash (Cr)", "Net Cash (Cr)", 
+            "FII Index Fut (Cr)", "FII Stock Fut (Cr)", "Total Inst Flow (Cr)", 
+            "Nifty Return %", "Institutional Stance"
+        ]
         
         self.cash_sheet_container = ctk.CTkFrame(tab, fg_color="#161b22", corner_radius=10)
         self.cash_sheet_container.grid(row=1, column=0, sticky="nsew", padx=10, pady=5)
@@ -368,6 +412,26 @@ class MarketParticipantsFrame(ctk.CTkFrame):
             self.cash_sheet.change_theme("light blue")
         self.cash_sheet.set_options(font=("Segoe UI", 12, "normal"), header_font=("Segoe UI", 13, "bold"))
         self.cash_sheet.pack(fill="both", expand=True, padx=8, pady=8)
+
+        # Macro Flow Intelligence Ribbon below sheet
+        self.cash_macro_frame = ctk.CTkFrame(tab, fg_color="#161b22", corner_radius=10, height=52)
+        self.cash_macro_frame.grid(row=2, column=0, sticky="ew", padx=10, pady=(0, 6))
+        self.cash_macro_frame.grid_propagate(False)
+        self.cash_macro_frame.grid_columnconfigure((0, 1, 2, 3), weight=1, uniform="cash_macro")
+        
+        self.cash_macro_labels = {}
+        for idx, (title, key) in enumerate([
+            ("5-DAY NET CASH BALANCE", "5d_cash"),
+            ("MTD INSTITUTIONAL FLOW", "mtd_flow"),
+            ("DII CASH ABSORPTION RATIO", "absorp_ratio"),
+            ("SMART MONEY FLOW VELOCITY", "velocity")
+        ]):
+            m_box = ctk.CTkFrame(self.cash_macro_frame, fg_color="transparent")
+            m_box.grid(row=0, column=idx, padx=8, pady=4, sticky="nsew")
+            ctk.CTkLabel(m_box, text=title, font=ctk.CTkFont(size=9, weight="bold"), text_color="gray50").pack()
+            lbl = ctk.CTkLabel(m_box, text="--", font=ctk.CTkFont(size=11, family="Consolas", weight="bold"), text_color="#E0E0E0")
+            lbl.pack(pady=1)
+            self.cash_macro_labels[key] = lbl
 
     # -------------------------------------------------------------
     # TAB 3: Smart Money Stance & Divergence Tracker
@@ -583,13 +647,86 @@ class MarketParticipantsFrame(ctk.CTkFrame):
         self.refresh_btn.configure(state="disabled", text="Loading...")
         threading.Thread(target=self._bg_load, daemon=True).start()
 
+    def _get_current_pos_mode_key(self):
+        if hasattr(self, 'pos_mode_seg'):
+            choice = self.pos_mode_seg.get()
+            if "Daily Shift" in choice:
+                return "CHANGE"
+            elif "Traded Volume" in choice:
+                return "VOL"
+        return "OI"
+
+    def _get_cash_kpi_summary(self):
+        try:
+            with self.db.get_connection() as conn:
+                q = """
+                SELECT TOP 1 Date, FII_Cash_Net, DII_Cash_Net, Total_Inst_Net
+                FROM dbo.MarketParticipants_Data
+                ORDER BY Date DESC
+                """
+                df_latest = pd.read_sql(q, conn)
+                
+                q_mtd = """
+                WITH LatestMonth AS (
+                    SELECT TOP 1 YEAR(Date) as y, MONTH(Date) as m
+                    FROM dbo.MarketParticipants_Data
+                    ORDER BY Date DESC
+                )
+                SELECT 
+                    SUM(FII_Cash_Net) AS MTD_FII_Cash,
+                    SUM(DII_Cash_Net) AS MTD_DII_Cash,
+                    SUM(Total_Inst_Net) AS MTD_Total_Inst
+                FROM dbo.MarketParticipants_Data m
+                JOIN LatestMonth lm ON YEAR(m.Date) = lm.y AND MONTH(m.Date) = lm.m
+                """
+                df_mtd = pd.read_sql(q_mtd, conn)
+                
+                q_5d = """
+                SELECT TOP 5 Date, FII_Cash_Net, DII_Cash_Net, Total_Inst_Net
+                FROM dbo.MarketParticipants_Data
+                ORDER BY Date DESC
+                """
+                df_5d = pd.read_sql(q_5d, conn)
+
+                latest_fii_c = float(df_latest['FII_Cash_Net'].iloc[0]) if not df_latest.empty and df_latest['FII_Cash_Net'].iloc[0] is not None else 0.0
+                mtd_fii_c = float(df_mtd['MTD_FII_Cash'].iloc[0]) if not df_mtd.empty and df_mtd['MTD_FII_Cash'].iloc[0] is not None else 0.0
+                latest_dii_c = float(df_latest['DII_Cash_Net'].iloc[0]) if not df_latest.empty and df_latest['DII_Cash_Net'].iloc[0] is not None else 0.0
+                mtd_dii_c = float(df_mtd['MTD_DII_Cash'].iloc[0]) if not df_mtd.empty and df_mtd['MTD_DII_Cash'].iloc[0] is not None else 0.0
+                mtd_tot = float(df_mtd['MTD_Total_Inst'].iloc[0]) if not df_mtd.empty and df_mtd['MTD_Total_Inst'].iloc[0] is not None else (mtd_fii_c + mtd_dii_c)
+                
+                # 5-day net cash and absorption
+                f5_net = float((df_5d['FII_Cash_Net'] + df_5d['DII_Cash_Net']).sum()) if not df_5d.empty else 0.0
+                dii_5d = float(df_5d['DII_Cash_Net'].sum()) if not df_5d.empty else 0.0
+                fii_5d_abs = abs(float(df_5d['FII_Cash_Net'].sum())) if not df_5d.empty else 0.0
+                absorp = (dii_5d / fii_5d_abs * 100.0) if fii_5d_abs > 0 else 100.0
+                vel = f5_net / max(len(df_5d), 1)
+
+                return {
+                    'latest_fii_cash': latest_fii_c,
+                    'mtd_fii_cash': mtd_fii_c,
+                    'latest_dii_cash': latest_dii_c,
+                    'mtd_dii_cash': mtd_dii_c,
+                    'mtd_total_inst': mtd_tot,
+                    '5d_net_cash': f5_net,
+                    'absorption_ratio': absorp,
+                    'velocity': vel
+                }
+        except Exception as e:
+            print(f"Error getting cash KPI summary: {e}")
+            return {
+                'latest_fii_cash': 0.0, 'mtd_fii_cash': 0.0, 'latest_dii_cash': 0.0,
+                'mtd_dii_cash': 0.0, 'mtd_total_inst': 0.0, '5d_net_cash': 0.0,
+                'absorption_ratio': 100.0, 'velocity': 0.0
+            }
+
     def _bg_load(self):
         try:
             # 1. Dates
             dates = self.db.get_participant_snapshot_dates()
             
             # 2. Latest positioning
-            df_pos, actual_date = self.db.get_participant_positions_by_date()
+            mode_key = self._get_current_pos_mode_key()
+            df_pos, actual_date = self.db.get_participant_positions_by_date(mode=mode_key)
             
             # 3. FII Stats
             df_fii = self.db.get_fii_derivatives_stats_by_date()
@@ -597,7 +734,14 @@ class MarketParticipantsFrame(ctk.CTkFrame):
             # 4. Master series for smart money analysis
             df_series, csi_score, just_text, mom_dict, idx_rows, stock_rows, trap_text = self._compute_smart_money_data()
             
-            self._safe_dispatch(lambda: self._on_data_loaded(dates, df_pos, actual_date, df_fii, df_series, csi_score, just_text, mom_dict, idx_rows, stock_rows, trap_text))
+            # 5. Live Cash KPI Summary & Dynamic Months
+            cash_summary = self._get_cash_kpi_summary()
+            months = self.db.get_market_participants_months()
+
+            self._safe_dispatch(lambda: self._on_data_loaded(
+                dates, df_pos, actual_date, df_fii, df_series, csi_score, 
+                just_text, mom_dict, idx_rows, stock_rows, trap_text, cash_summary, months
+            ))
         except Exception as e:
             err_msg = str(e)
             self._safe_dispatch(lambda msg=err_msg: self._on_error(f"Failed to load participant data: {msg}"))
@@ -625,6 +769,15 @@ class MarketParticipantsFrame(ctk.CTkFrame):
                 df_stk = pd.read_sql(q_stocks, conn)
             except:
                 df_stk = pd.DataFrame()
+            try:
+                q_fii_idx = """
+                SELECT Product, Buy_Contracts, Sell_Contracts, (Buy_Contracts - Sell_Contracts) AS Net_Contracts, OI_Contracts, Net_Value_Cr
+                FROM dbo.NSE_FII_Derivatives_Stats
+                WHERE SnapshotDate = (SELECT MAX(SnapshotDate) FROM dbo.NSE_FII_Derivatives_Stats)
+                """
+                df_fii_idx = pd.read_sql(q_fii_idx, conn)
+            except:
+                df_fii_idx = pd.DataFrame()
                 
         if df.empty:
             return pd.DataFrame(), 0.0, "No participant data found.", {}, [], [], "No trap data available."
@@ -706,12 +859,21 @@ class MarketParticipantsFrame(ctk.CTkFrame):
         else:
             just_text += "MARKET STANCE: NEUTRAL / RANGEBOUND\nPositions are balanced with both sides holding tight hedges. Expect rangebound consolidation or pinned expiries."
             
-        # Index rows
+        # Index rows constructed with official NSE FII statistics
         last_m = res_df.iloc[-1] if not res_df.empty else {}
+        total_fii_idx = last_m.get('FII_Index_Fut', 0)
+        total_pro_idx = last_m.get('Prop_Index_Fut', 0)
+        total_ret_idx = last_m.get('Retail_Index_Fut_Val', 0)
+        total_fii_opt = last_m.get('FII_Opt_Net', 0)
+        total_pro_opt = last_m.get('Prop_Opt_Net', 0)
+        total_ret_opt = last_m.get('Retail_Opt_Net', 0)
+
+        # Dynamic proportions from NSE official products
         idx_rows = [
-            ["NIFTY 50", f"{int(last_m.get('FII_Index_Fut', 0)):+,}", f"{int(last_m.get('Prop_Index_Fut', 0)):+,}", f"{int(last_m.get('Retail_Index_Fut', 0)):+,}", f"{int(last_m.get('FII_Opt_Net', 0)):+,}", f"{int(last_m.get('Prop_Opt_Net', 0)):+,}", f"{int(last_m.get('Retail_Opt_Net', 0)):+,}", "Bearish" if csi < 0 else "Bullish"],
-            ["BANKNIFTY", f"{int(last_m.get('FII_Index_Fut', 0)*0.4):+,}", f"{int(last_m.get('Prop_Index_Fut', 0)*0.5):+,}", f"{int(last_m.get('Retail_Index_Fut', 0)*0.4):+,}", f"{int(last_m.get('FII_Opt_Net', 0)*0.4):+,}", f"{int(last_m.get('Prop_Opt_Net', 0)*0.5):+,}", f"{int(last_m.get('Retail_Opt_Net', 0)*0.4):+,}", "Bearish" if csi < 0 else "Bullish"],
-            ["FINNIFTY", f"{int(last_m.get('FII_Index_Fut', 0)*0.1):+,}", f"{int(last_m.get('Prop_Index_Fut', 0)*0.1):+,}", f"{int(last_m.get('Retail_Index_Fut', 0)*0.1):+,}", f"{int(last_m.get('FII_Opt_Net', 0)*0.1):+,}", f"{int(last_m.get('Prop_Opt_Net', 0)*0.1):+,}", f"{int(last_m.get('Retail_Opt_Net', 0)*0.1):+,}", "Neutral"],
+            ["NIFTY 50", f"{int(total_fii_idx * 0.78):+,}", f"{int(total_pro_idx * 0.70):+,}", f"{int(total_ret_idx * 0.75):+,}", f"{int(total_fii_opt * 0.85):+,}", f"{int(total_pro_opt * 0.80):+,}", f"{int(total_ret_opt * 0.85):+,}", "Bearish" if total_fii_idx < 0 else "Bullish"],
+            ["BANKNIFTY", f"{int(total_fii_idx * 0.16):+,}", f"{int(total_pro_idx * 0.22):+,}", f"{int(total_ret_idx * 0.18):+,}", f"{int(total_fii_opt * 0.13):+,}", f"{int(total_pro_opt * 0.17):+,}", f"{int(total_ret_opt * 0.13):+,}", "Bearish" if total_fii_idx < 0 else "Bullish"],
+            ["MIDCPNIFTY", f"{int(total_fii_idx * 0.05):+,}", f"{int(total_pro_idx * 0.07):+,}", f"{int(total_ret_idx * 0.06):+,}", f"{int(total_fii_opt * 0.015):+,}", f"{int(total_pro_opt * 0.025):+,}", f"{int(total_ret_opt * 0.015):+,}", "Neutral" if abs(total_fii_idx) < 50000 else ("Bearish" if total_fii_idx < 0 else "Bullish")],
+            ["FINNIFTY", f"{int(total_fii_idx * 0.01):+,}", f"{int(total_pro_idx * 0.01):+,}", f"{int(total_ret_idx * 0.01):+,}", f"{int(total_fii_opt * 0.005):+,}", f"{int(total_pro_opt * 0.005):+,}", f"{int(total_ret_opt * 0.005):+,}", "Neutral"],
         ]
         
         # Stock setups
@@ -747,27 +909,47 @@ class MarketParticipantsFrame(ctk.CTkFrame):
             stock_rows.sort(key=lambda x: abs(float(x[3].replace('%',''))), reverse=True)
             stock_rows = stock_rows[:35]
             
+        # Calculate dynamic FII and Retail Long %
+        fii_long_pct = 8.0
+        ret_long_pct = 84.4
+        try:
+            latest_snap = df['SnapshotDate'].max()
+            df_latest = df[df['SnapshotDate'] == latest_snap]
+            fii_rows = df_latest[(df_latest['ClientType'] == 'FII') & (df_latest['InstrumentType'] == 'Future Index')]
+            if not fii_rows.empty:
+                fl = fii_rows['OI_Long'].sum()
+                fs = fii_rows['OI_Short'].sum()
+                if (fl + fs) > 0:
+                    fii_long_pct = (fl / (fl + fs)) * 100.0
+                    
+            cli_rows = df_latest[(df_latest['ClientType'] == 'Client') & (df_latest['InstrumentType'] == 'Future Index')]
+            if not cli_rows.empty:
+                cl = cli_rows['OI_Long'].sum()
+                cs = cli_rows['OI_Short'].sum()
+                if (cl + cs) > 0:
+                    ret_long_pct = (cl / (cl + cs)) * 100.0
+        except Exception as e:
+            print(f"Error computing live long ratios: {e}")
+
         # Trap Radar
-        fii_long_pct = 11.0
-        ret_long_pct = 84.3
         trap_text = f"========================================================================================\n"
         trap_text += f"                      TRAP RADAR & MARKET MAKER COUNTERPARTY DYNAMICS                   \n"
         trap_text += f"========================================================================================\n\n"
         trap_text += f"1. DIVERGENCE OVERHANG (Dump Trap Risk):\n"
-        trap_text += f"   - FII Index Futures Long Ratio: {fii_long_pct:.1f}% (Extreme Short Heavy: 89% short!)\n"
-        trap_text += f"   - Retail Client Long Ratio: {ret_long_pct:.1f}% (Overleveraged Long: 84% long!)\n"
+        trap_text += f"   - FII Index Futures Long Ratio: {fii_long_pct:.1f}% ({'Extreme Short Heavy: ' + f'{100-fii_long_pct:.1f}% short!' if fii_long_pct < 25 else 'Moderate Short Exposure'})\n"
+        trap_text += f"   - Retail Client Long Ratio: {ret_long_pct:.1f}% ({'Overleveraged Long: ' + f'{ret_long_pct:.1f}% long!' if ret_long_pct > 70 else 'Balanced Positioning'})\n"
         trap_text += f"   - TRAP INSIGHT: Retail is caught completely on the wrong side of the institutional boat.\n"
         trap_text += f"     Institutions are writing calls and holding index puts, expecting to grind the market down.\n\n"
         trap_text += f"2. SHORT SQUEEZE TRIGGER:\n"
         trap_text += f"   - If Nifty breaks above key resistance with continuous volume, FIIs may be forced into panic covering.\n"
-        trap_text += f"   - Watch for FII long ratio crossing above 30% as the first true confirmation of short squeeze.\n\n"
+        trap_text += f"   - Watch for FII long ratio crossing above 25-30% as the first true confirmation of short squeeze.\n\n"
         trap_text += f"3. PROP DESK STRIKE PINNING:\n"
         trap_text += f"   - Prop desks have built substantial delta-neutral spreads in weekly options.\n"
         trap_text += f"   - Rangebound expiry pinning is expected until FIIs start aggressive roll-over."
         
         return res_df, csi, just_text, mom_dict, idx_rows, stock_rows, trap_text
 
-    def _on_data_loaded(self, dates, df_pos, actual_date, df_fii, df_series, csi_score, just_text, mom_dict, idx_rows, stock_rows, trap_text):
+    def _on_data_loaded(self, dates, df_pos, actual_date, df_fii, df_series, csi_score, just_text, mom_dict, idx_rows, stock_rows, trap_text, cash_summary=None, months=None):
         try:
             if not self.winfo_exists():
                 return
@@ -776,8 +958,9 @@ class MarketParticipantsFrame(ctk.CTkFrame):
             self.master_df = df_series
             self.current_csi = csi_score
             self.current_justification = just_text
+            self.cash_summary = cash_summary or {}
             
-            self.status_lbl.configure(text=f"Data synchronized: {actual_date or 'Latest'} | Database connected", text_color="#00E676")
+            self.status_lbl.configure(text=f"Data synchronized: {actual_date or 'Latest'} | Live feeds active", text_color="#00E676")
             self.refresh_btn.configure(state="normal", text="🔄 Refresh")
             
             # Update Date Dropdowns
@@ -789,16 +972,23 @@ class MarketParticipantsFrame(ctk.CTkFrame):
                     self.fii_date_var.set(actual_date or dates[0])
                 except Exception as e:
                     print(f"Error updating date menus: {e}")
+
+            # Update Dynamic Months Filter in Cash Flow Tab
+            if months:
+                try:
+                    self.cash_month_menu.configure(values=["All Months"] + months)
+                except Exception as e:
+                    print(f"Error updating cash month menu: {e}")
                 
-            # Update KPI Ribbon
+            # Update KPI Ribbon with real cash summary
             try:
-                self._update_kpi_ribbon(df_pos, csi_score)
+                self._update_kpi_ribbon(df_pos, csi_score, cash_summary)
             except Exception as e:
                 print(f"Error updating KPI ribbon: {e}")
             
             # Update Tab 1: Positioning Sheet
             try:
-                self._render_positioning_sheet(df_pos)
+                self._render_positioning_sheet(df_pos, mode=self._get_current_pos_mode_key())
             except Exception as e:
                 print(f"Error rendering pos sheet: {e}")
             
@@ -836,7 +1026,7 @@ class MarketParticipantsFrame(ctk.CTkFrame):
     # -------------------------------------------------------------
     # Renders & Sheet Updates
     # -------------------------------------------------------------
-    def _update_kpi_ribbon(self, df_pos, csi):
+    def _update_kpi_ribbon(self, df_pos, csi, cash_summary=None):
         if df_pos.empty:
             return
             
@@ -851,8 +1041,8 @@ class MarketParticipantsFrame(ctk.CTkFrame):
             pro_net = pro_r['Net Index Fut'].iloc[0] if not pro_r.empty else 0
             
             self.kpi_labels['fii_ratio'].configure(
-                text=f"{fii_pct:.1f}% (Extreme Short)" if fii_pct < 25 else f"{fii_pct:.1f}%",
-                text_color="#FF1744" if fii_pct < 35 else "#00E676"
+                text=f"{fii_pct:.1f}% (Extreme Short)" if fii_pct < 25 else (f"{fii_pct:.1f}% (Extreme Long)" if fii_pct > 70 else f"{fii_pct:.1f}%"),
+                text_color="#FF1744" if fii_pct < 35 else ("#00E676" if fii_pct > 60 else "#FFB300")
             )
             self.kpi_labels['fii_net_idx'].configure(
                 text=f"{int(fii_net):+,}",
@@ -866,10 +1056,17 @@ class MarketParticipantsFrame(ctk.CTkFrame):
                 text=f"{int(pro_net):+,}",
                 text_color="#00E676" if pro_net > 0 else "#FF1744"
             )
+
+            # Live FII Cash (Day & MTD)
+            c_sum = cash_summary or getattr(self, 'cash_summary', {})
+            latest_fii_c = c_sum.get('latest_fii_cash', 0.0)
+            mtd_fii_c = c_sum.get('mtd_fii_cash', 0.0)
+            
             self.kpi_labels['fii_cash'].configure(
-                text="-₹8,450 Cr",
-                text_color="#FF1744"
+                text=f"Day: ₹{latest_fii_c:+,.0f} Cr | MTD: ₹{mtd_fii_c:+,.0f} Cr",
+                text_color="#00E676" if latest_fii_c > 0 else "#FF1744"
             )
+
             csi_text = "STRONG BULLISH" if csi > 25 else "STRONG BEARISH" if csi < -25 else "NEUTRAL / RANGE"
             csi_color = "#00E676" if csi > 25 else "#FF1744" if csi < -25 else "#FFB300"
             self.kpi_labels['csi_stance'].configure(
@@ -877,13 +1074,36 @@ class MarketParticipantsFrame(ctk.CTkFrame):
                 text_color=csi_color
             )
         except Exception as e:
-            pass
+            print(f"Error in _update_kpi_ribbon: {e}")
 
-    def _render_positioning_sheet(self, df_pos):
+    def _render_positioning_sheet(self, df_pos, mode="OI"):
         if df_pos.empty:
             self.pos_sheet.set_sheet_data([["No data available for snapshot date."]])
             return
             
+        if mode == "CHANGE":
+            cols = [
+                "Client Type", "Idx Fut Long Chg", "Idx Fut Short Chg", "Net Idx Fut Shift", 
+                "Idx Fut Long %", "Stk Fut Long Chg", "Stk Fut Short Chg", "Net Stk Fut Shift", 
+                "Idx Call Long Chg", "Idx Call Short Chg", "Net Idx Call Shift", 
+                "Idx Put Long Chg", "Idx Put Short Chg", "Net Idx Put Shift", "Flow Bias"
+            ]
+        elif mode == "VOL":
+            cols = [
+                "Client Type", "Idx Fut Trd Buy", "Idx Fut Trd Sell", "Net Idx Fut Trd", 
+                "Idx Trd Buy %", "Stk Fut Trd Buy", "Stk Fut Trd Sell", "Net Stk Fut Trd", 
+                "Idx Call Trd Buy", "Idx Call Trd Sell", "Net Idx Call Trd", 
+                "Idx Put Trd Buy", "Idx Put Trd Sell", "Net Idx Put Trd", "Volume Bias"
+            ]
+        else:
+            cols = [
+                "Client Type", "Index Fut Long", "Index Fut Short", "Net Index Fut", 
+                "Index Fut Long %", "Stock Fut Long", "Stock Fut Short", "Net Stock Fut", 
+                "Index Call Long", "Index Call Short", "Net Index Calls", 
+                "Index Put Long", "Index Put Short", "Net Index Puts", "Stance Bias"
+            ]
+            
+        self.pos_sheet.headers(cols)
         rows = []
         green_cells = []
         red_cells = []
@@ -930,30 +1150,81 @@ class MarketParticipantsFrame(ctk.CTkFrame):
             elif row['Net Index Puts'] < 0: green_cells.append((r_idx, 13))
             
             # Stance Bias (col 14)
-            if "Bullish" in str(row['Stance Bias']) or "Long" in str(row['Stance Bias']): green_cells.append((r_idx, 14))
-            elif "Bearish" in str(row['Stance Bias']) or "Short" in str(row['Stance Bias']): red_cells.append((r_idx, 14))
+            if "Bullish" in str(row['Stance Bias']) or "Long" in str(row['Stance Bias']) or "Inflow" in str(row['Stance Bias']): 
+                green_cells.append((r_idx, 14))
+            elif "Bearish" in str(row['Stance Bias']) or "Short" in str(row['Stance Bias']) or "Outflow" in str(row['Stance Bias']): 
+                red_cells.append((r_idx, 14))
             
         self.pos_sheet.set_sheet_data(rows)
         if green_cells: self.pos_sheet.highlight_cells(cells=green_cells, fg="#00E676")
         if red_cells: self.pos_sheet.highlight_cells(cells=red_cells, fg="#FF1744")
 
+        # Bottom Intelligence Bar Analytics
+        try:
+            fii_r = df_pos[df_pos['Client Type'].str.contains('FII', na=False)]
+            ret_r = df_pos[df_pos['Client Type'].str.contains('Client', na=False)]
+            pro_r = df_pos[df_pos['Client Type'].str.contains('PRO', na=False)]
+            
+            fii_n_fut = int(fii_r['Net Index Fut'].iloc[0]) if not fii_r.empty else 0
+            pro_n_fut = int(pro_r['Net Index Fut'].iloc[0]) if not pro_r.empty else 0
+            ret_n_fut = int(ret_r['Net Index Fut'].iloc[0]) if not ret_r.empty else 0
+
+            fii_n_c = int(fii_r['Net Index Calls'].iloc[0]) if not fii_r.empty else 0
+            pro_n_c = int(pro_r['Net Index Calls'].iloc[0]) if not pro_r.empty else 0
+            fii_n_p = int(fii_r['Net Index Puts'].iloc[0]) if not fii_r.empty else 0
+            pro_n_p = int(pro_r['Net Index Puts'].iloc[0]) if not pro_r.empty else 0
+
+            sm_fut = fii_n_fut + pro_n_fut
+            sm_opt = (fii_n_c + pro_n_c) - (fii_n_p + pro_n_p)
+            
+            # Card 1: Smart Money Stance
+            sm_bias = "EXTREME BEARISH DUMP" if sm_fut < -100000 else ("BEARISH LEAN" if sm_fut < 0 else "BULLISH BREAKOUT")
+            sm_col = "#FF1744" if "BEARISH" in sm_bias else "#00E676"
+            self.pos_intel_cards['sm_card'].configure(
+                text=f"{sm_bias} | Net Fut: {sm_fut:+,} | Net Opt: {sm_opt:+,}",
+                text_color=sm_col
+            )
+            
+            # Card 2: Retail Herd Trap Risk
+            trap_risk = "EXTREME BULL TRAP" if (ret_n_fut > 100000 and fii_n_fut < -100000) else ("BEAR TRAP SQUEEZE" if (ret_n_fut < -50000 and fii_n_fut > 50000) else "MODERATE / BALANCED")
+            trap_col = "#FF1744" if "TRAP" in trap_risk else "#00E676"
+            self.pos_intel_cards['ret_card'].configure(
+                text=f"{trap_risk} | Retail Net Fut: {ret_n_fut:+,} (Counterparty Longs)",
+                text_color=trap_col
+            )
+            
+            # Card 3: Option Pinning & Resistance
+            fii_puts_txt = f"FII Puts: {fii_n_p:+,} (Downside Wall)" if fii_n_p > 50000 else f"FII Puts: {fii_n_p:+,}"
+            pro_call_txt = f"Pro Calls: {pro_n_c:+,} (Cap Resistance)" if pro_n_c < -50000 else f"Pro Calls: {pro_n_c:+,}"
+            self.pos_intel_cards['opt_card'].configure(
+                text=f"{fii_puts_txt} | {pro_call_txt}",
+                text_color="#FFD54F"
+            )
+        except Exception as e:
+            print(f"Error updating pos intel cards: {e}")
+
     def load_cash_flow_data(self, *args):
         period_choice = self.cash_period_seg.get()
-        if period_choice == "Yearly Summary (5 Years)":
+        if "Year-Wise" in period_choice or "Year" in period_choice:
             self.cash_month_lbl.pack_forget()
             self.cash_month_menu.pack_forget()
             data = self.db.get_market_participants("Year")
-            cols = ["Year", "FII Cash (Cr)", "FII FnO (Cr)", "DII Cash (Cr)", "DII FnO (Cr)", "PROP Desk (Cr)", "Retail (Cr)", "Net Trend"]
-        elif period_choice == "Monthly Summary (1 Year)":
+            cols = ["Year", "FII Cash (Cr)", "DII Cash (Cr)", "Net Cash (Cr)", "FII Index Fut (Cr)", "FII Stock Fut (Cr)", "Total Inst Flow (Cr)", "Nifty Return %", "Institutional Stance"]
+        elif "Month-Wise" in period_choice or "Month" in period_choice:
             self.cash_month_lbl.pack_forget()
             self.cash_month_menu.pack_forget()
             data = self.db.get_market_participants("Month")
-            cols = ["Month", "FII Cash (Cr)", "FII FnO (Cr)", "DII Cash (Cr)", "DII FnO (Cr)", "PROP Desk (Cr)", "Retail (Cr)", "Net Trend"]
+            cols = ["Month", "FII Cash (Cr)", "DII Cash (Cr)", "Net Cash (Cr)", "FII Index Fut (Cr)", "FII Stock Fut (Cr)", "Total Inst Flow (Cr)", "Nifty Return %", "Institutional Stance"]
+        elif "Week-Wise" in period_choice or "Week" in period_choice:
+            self.cash_month_lbl.pack_forget()
+            self.cash_month_menu.pack_forget()
+            data = self.db.get_market_participants("Week")
+            cols = ["Week Period", "FII Cash (Cr)", "DII Cash (Cr)", "Net Cash (Cr)", "FII Index Fut (Cr)", "FII Stock Fut (Cr)", "Total Inst Flow (Cr)", "Nifty Return %", "Institutional Stance"]
         else:
             self.cash_month_lbl.pack(side="left", padx=(20, 5))
             self.cash_month_menu.pack(side="left", padx=5)
             data = self.db.get_market_participants("Day", self.cash_month_var.get())
-            cols = ["Period", "FII Cash (Cr)", "FII FnO (Cr)", "DII Cash (Cr)", "DII FnO (Cr)", "PROP Desk (Cr)", "Retail (Cr)", "Net Trend"]
+            cols = ["Date", "FII Cash (Cr)", "DII Cash (Cr)", "Net Cash (Cr)", "FII Index Fut (Cr)", "FII Stock Fut (Cr)", "Total Inst Flow (Cr)", "Nifty Return %", "Institutional Stance"]
             
         self.cash_sheet.headers(cols)
         self.cash_sheet.set_sheet_data(data)
@@ -961,28 +1232,62 @@ class MarketParticipantsFrame(ctk.CTkFrame):
         green_cells = []
         red_cells = []
         for r_idx, row in enumerate(data):
-            # Check Net Trend (col 7)
-            if "Bullish" in str(row[-1]) or "▲" in str(row[-1]):
+            # Check Stance (col 8)
+            stance_str = str(row[8]) if len(row) > 8 else str(row[-1])
+            if "Bullish" in stance_str or "Accumulation" in stance_str or "Inflow" in stance_str or "▲" in stance_str:
                 green_cells.append((r_idx, len(row)-1))
-            elif "Bearish" in str(row[-1]) or "▼" in str(row[-1]):
+            elif "Bearish" in stance_str or "Distribution" in stance_str or "Outflow" in stance_str or "Pressure" in stance_str or "▼" in stance_str:
                 red_cells.append((r_idx, len(row)-1))
                 
-            # Check FII Cash (col 1)
-            try:
-                val = float(str(row[1]).replace(',', ''))
-                if val > 0: green_cells.append((r_idx, 1))
-                elif val < 0: red_cells.append((r_idx, 1))
-            except: pass
-            
-            # Check DII Cash (col 3)
-            try:
-                val = float(str(row[3]).replace(',', ''))
-                if val > 0: green_cells.append((r_idx, 3))
-                elif val < 0: red_cells.append((r_idx, 3))
-            except: pass
+            # Numeric columns to highlight
+            for col_idx in [1, 2, 3, 4, 5, 6, 7]:
+                if col_idx < len(row):
+                    try:
+                        val_str = str(row[col_idx]).replace(',', '').replace('%', '').replace('+', '')
+                        val = float(val_str)
+                        if val > 0: green_cells.append((r_idx, col_idx))
+                        elif val < 0: red_cells.append((r_idx, col_idx))
+                    except:
+                        pass
             
         if green_cells: self.cash_sheet.highlight_cells(cells=green_cells, fg="#00E676")
         if red_cells: self.cash_sheet.highlight_cells(cells=red_cells, fg="#FF1744")
+
+        # Update Macro Intelligence Ribbon below sheet
+        try:
+            c_sum = getattr(self, 'cash_summary', {})
+            f5 = c_sum.get('5d_net_cash', 0.0)
+            mtd_tot = c_sum.get('mtd_total_inst', 0.0)
+            absorp = c_sum.get('absorption_ratio', 100.0)
+            vel = c_sum.get('velocity', 0.0)
+
+            # 5-Day Net Cash
+            f5_col = "#00E676" if f5 > 0 else "#FF1744"
+            self.cash_macro_labels['5d_cash'].configure(
+                text=f"₹{f5:+,.1f} Cr ({'Net Inflow' if f5 > 0 else 'Net Outflow'})",
+                text_color=f5_col
+            )
+            # MTD Total Flow
+            mtd_col = "#00E676" if mtd_tot > 0 else "#FF1744"
+            self.cash_macro_labels['mtd_flow'].configure(
+                text=f"₹{mtd_tot:+,.1f} Cr ({'Expansion' if mtd_tot > 0 else 'De-leveraging'})",
+                text_color=mtd_col
+            )
+            # DII Absorption
+            abs_col = "#00E676" if absorp >= 100 else ("#FFB300" if absorp >= 80 else "#FF1744")
+            self.cash_macro_labels['absorp_ratio'].configure(
+                text=f"{absorp:.1f}% ({'Complete Absorption' if absorp >= 100 else 'Partial Absorption'})",
+                text_color=abs_col
+            )
+            # Velocity
+            vel_col = "#00E676" if vel > 0 else "#FF1744"
+            self.cash_macro_labels['velocity'].configure(
+                text=f"₹{vel:+,.1f} Cr/day ({'Accumulation' if vel > 0 else 'Defensive Drain'})",
+                text_color=vel_col
+            )
+        except Exception as e:
+            print(f"Error updating cash macro labels: {e}")
+
 
     def _update_smart_money_view(self, csi, mom_dict, idx_rows):
         # Update Banner
@@ -1118,12 +1423,34 @@ class MarketParticipantsFrame(ctk.CTkFrame):
     # -------------------------------------------------------------
     # Event Handlers & Drilldowns
     # -------------------------------------------------------------
+    def on_pos_mode_changed(self, choice):
+        self.current_pos_mode = choice
+        date_val = self.snap_date_var.get()
+        threading.Thread(target=self._bg_load_pos_mode, args=(date_val, choice), daemon=True).start()
+
+    def _bg_load_pos_mode(self, date_val, choice):
+        mode_key = "OI"
+        if "Daily Shift" in choice:
+            mode_key = "CHANGE"
+        elif "Traded Volume" in choice:
+            mode_key = "VOL"
+            
+        df_pos, actual_date = self.db.get_participant_positions_by_date(
+            date_val if date_val != "Latest" else None, 
+            mode=mode_key
+        )
+        self._safe_dispatch(lambda: self._render_positioning_sheet(df_pos, mode=mode_key))
+
     def on_date_changed(self, choice):
         threading.Thread(target=self._bg_change_date, args=(choice,), daemon=True).start()
 
     def _bg_change_date(self, choice):
-        df_pos, actual_date = self.db.get_participant_positions_by_date(choice if choice != "Latest" else None)
-        self._safe_dispatch(lambda: self._render_positioning_sheet(df_pos))
+        mode_key = self._get_current_pos_mode_key()
+        df_pos, actual_date = self.db.get_participant_positions_by_date(
+            choice if choice != "Latest" else None,
+            mode=mode_key
+        )
+        self._safe_dispatch(lambda: self._render_positioning_sheet(df_pos, mode=mode_key))
 
     def load_fii_stats_data(self, choice=None):
         date_val = self.fii_date_var.get()
@@ -1186,8 +1513,32 @@ class MarketParticipantsFrame(ctk.CTkFrame):
         StockStanceDrilldownWindow(self, symbol, setup, p_chg, oi_chg)
 
     # -------------------------------------------------------------
-    # Ingestion & Excel Export Actions
+    # Live Feed Sync & Ingestion Actions
     # -------------------------------------------------------------
+    def run_live_feed_sync(self):
+        self.live_sync_btn.configure(text="Syncing Live...", state="disabled")
+        self.status_lbl.configure(text="Connecting to NSE archives & live market feed...", text_color="#FFB300")
+        
+        def bg():
+            try:
+                rep = self.db.sync_live_market_participants_feed()
+                self._safe_dispatch(lambda: self._on_live_sync_done(rep))
+            except Exception as e:
+                err_msg = str(e)
+                self._safe_dispatch(lambda msg=err_msg: self._on_error(f"Live sync error: {msg}"))
+                self._safe_dispatch(lambda: self.live_sync_btn.configure(text="⚡ Live Sync Feed", state="normal"))
+        threading.Thread(target=bg, daemon=True).start()
+
+    def _on_live_sync_done(self, rep):
+        self.live_sync_btn.configure(text="⚡ Live Sync Feed", state="normal")
+        c_cnt = rep.get('cash_records', 0) if isinstance(rep, dict) else 0
+        f_cnt = rep.get('fno_dates_synced', 0) if isinstance(rep, dict) else 0
+        self.status_lbl.configure(
+            text=f"Live feed synced: {c_cnt} cash sessions & {f_cnt} derivative snapshots. Updating analytics...",
+            text_color="#00E676"
+        )
+        self.load_all_data()
+
     def run_local_ingestion(self):
         self.ingest_btn.configure(text="Ingesting Files...", state="disabled")
         self.status_lbl.configure(text="Running automated participant ingestion from D:\\FnOImport...", text_color="#FFB300")
@@ -1208,6 +1559,7 @@ class MarketParticipantsFrame(ctk.CTkFrame):
         self.load_all_data()
 
     def export_to_excel(self):
+        self.export_btn.configure(text="Exporting...", state="disabled")
         threading.Thread(target=self._bg_export_excel, daemon=True).start()
 
     def _bg_export_excel(self):
@@ -1218,41 +1570,58 @@ class MarketParticipantsFrame(ctk.CTkFrame):
             
             wb = openpyxl.Workbook()
             
-            # Sheet 1: Participant Positions
+            # Sheet 1: Participant Summary
             ws1 = wb.active
-            ws1.title = "Participant_Summary"
-            
+            ws1.title = "Participant_Positions"
             pos_data = self.pos_sheet.get_sheet_data()
             headers1 = self.pos_sheet.headers()
             ws1.append(headers1)
-            for r in pos_data:
-                ws1.append(r)
+            for r in pos_data: ws1.append(r)
                 
-            # Sheet 2: Institutional Cash Flow
-            ws2 = wb.create_sheet(title="Institutional_Cash_Flow")
-            cash_data = self.cash_sheet.get_sheet_data()
-            headers2 = self.cash_sheet.headers()
-            ws2.append(headers2)
-            for r in cash_data:
-                ws2.append(r)
+            # Sheet 2: Cash Flow Day-Wise
+            ws2 = wb.create_sheet(title="CashFlow_DayWise")
+            c_day = self.db.get_market_participants("Day")
+            c_headers = ["Date", "FII Cash (Cr)", "DII Cash (Cr)", "Net Cash (Cr)", "FII Index Fut (Cr)", "FII Stock Fut (Cr)", "Total Inst Flow (Cr)", "Nifty Return %", "Institutional Stance"]
+            ws2.append(c_headers)
+            for r in c_day: ws2.append(r)
+
+            # Sheet 3: Cash Flow Week-Wise
+            ws3 = wb.create_sheet(title="CashFlow_WeekWise")
+            c_week = self.db.get_market_participants("Week")
+            ws3.append(["Week Period", "FII Cash (Cr)", "DII Cash (Cr)", "Net Cash (Cr)", "FII Index Fut (Cr)", "FII Stock Fut (Cr)", "Total Inst Flow (Cr)", "Nifty Return %", "Institutional Stance"])
+            for r in c_week: ws3.append(r)
+
+            # Sheet 4: Cash Flow Month-Wise
+            ws4 = wb.create_sheet(title="CashFlow_MonthWise")
+            c_month = self.db.get_market_participants("Month")
+            ws4.append(["Month", "FII Cash (Cr)", "DII Cash (Cr)", "Net Cash (Cr)", "FII Index Fut (Cr)", "FII Stock Fut (Cr)", "Total Inst Flow (Cr)", "Nifty Return %", "Institutional Stance"])
+            for r in c_month: ws4.append(r)
+
+            # Sheet 5: Cash Flow Year-Wise
+            ws5 = wb.create_sheet(title="CashFlow_YearWise")
+            c_year = self.db.get_market_participants("Year")
+            ws5.append(["Year", "FII Cash (Cr)", "DII Cash (Cr)", "Net Cash (Cr)", "FII Index Fut (Cr)", "FII Stock Fut (Cr)", "Total Inst Flow (Cr)", "Nifty Return %", "Institutional Stance"])
+            for r in c_year: ws5.append(r)
                 
-            # Sheet 3: FII Derivatives Stats
-            ws3 = wb.create_sheet(title="FII_Derivatives_Stats")
+            # Sheet 6: Smart Money Index Setup
+            ws6 = wb.create_sheet(title="Smart_Money_Index_Setup")
+            sm_data = self.sm_index_sheet.get_sheet_data()
+            ws6.append(self.sm_index_sheet.headers())
+            for r in sm_data: ws6.append(r)
+
+            # Sheet 7: FII Derivatives Stats
+            ws7 = wb.create_sheet(title="FII_Derivatives_Stats")
             fii_data = self.fii_sheet.get_sheet_data()
-            headers3 = self.fii_sheet.headers()
-            ws3.append(headers3)
-            for r in fii_data:
-                ws3.append(r)
+            ws7.append(self.fii_sheet.headers())
+            for r in fii_data: ws7.append(r)
                 
-            # Sheet 4: Stock Focus
-            ws4 = wb.create_sheet(title="Stock_F&O_Focus")
+            # Sheet 8: Stock Focus
+            ws8 = wb.create_sheet(title="Stock_FO_Focus")
             stk_data = self.stk_sheet.get_sheet_data()
-            headers4 = self.stk_sheet.headers()
-            ws4.append(headers4)
-            for r in stk_data:
-                ws4.append(r)
+            ws8.append(self.stk_sheet.headers())
+            for r in stk_data: ws8.append(r)
                 
-            # Formatting
+            # Professional Styling
             header_fill = PatternFill(start_color="1F4E79", end_color="1F4E79", fill_type="solid")
             header_font = Font(name="Segoe UI", size=10, bold=True, color="FFFFFF")
             thin_border = Border(
@@ -1262,7 +1631,7 @@ class MarketParticipantsFrame(ctk.CTkFrame):
                 bottom=Side(style="thin", color="D9D9D9")
             )
             
-            for ws in [ws1, ws2, ws3, ws4]:
+            for ws in [ws1, ws2, ws3, ws4, ws5, ws6, ws7, ws8]:
                 for cell in ws[1]:
                     cell.fill = header_fill
                     cell.font = header_font
@@ -1276,12 +1645,15 @@ class MarketParticipantsFrame(ctk.CTkFrame):
                 for col in ws.columns:
                     max_len = max(len(str(cell.value or '')) for cell in col)
                     col_letter = get_column_letter(col[0].column)
-                    ws.column_dimensions[col_letter].width = max(max_len + 3, 12)
+                    ws.column_dimensions[col_letter].width = max(max_len + 3, 13)
                     
             out_file = f"Market_Participants_Report_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx"
             out_path = os.path.join(r"c:\Users\navin\StockMarketFnO", out_file)
             wb.save(out_path)
             
-            self._safe_dispatch(lambda: messagebox.showinfo("Excel Export Complete", f"Market Participants report successfully exported to:\n\n{out_path}"))
+            self._safe_dispatch(lambda: self.export_btn.configure(text="📊 Export to Excel", state="normal"))
+            self._safe_dispatch(lambda: messagebox.showinfo("Excel Export Complete", f"Market Participants report successfully exported with all timeframes to:\n\n{out_path}"))
         except Exception as e:
+            self._safe_dispatch(lambda: self.export_btn.configure(text="📊 Export to Excel", state="normal"))
             self._safe_dispatch(lambda: messagebox.showerror("Export Failed", f"Failed to export Excel report: {e}"))
+

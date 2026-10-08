@@ -614,6 +614,16 @@ class SmartMoneyStanceFrame(ctk.CTkFrame):
             text_color="#FFD54F"
         ).pack(side="left")
         
+        self.sync_btn = ctk.CTkButton(
+            hdr, 
+            text="⚡ Live Sync Feed", 
+            width=135, 
+            fg_color="#00C853", 
+            hover_color="#00E676",
+            command=self.sync_live_feed
+        )
+        self.sync_btn.pack(side="right", padx=5)
+
         self.refresh_btn = ctk.CTkButton(
             hdr, 
             text=" Refresh Analysis", 
@@ -627,9 +637,9 @@ class SmartMoneyStanceFrame(ctk.CTkFrame):
         self.ingest_btn = ctk.CTkButton(
             hdr, 
             text=" Import Local Files", 
-            width=140, 
-            fg_color="#00C853", 
-            hover_color="#00E676",
+            width=135, 
+            fg_color="#E65100", 
+            hover_color="#EF6C00",
             command=self.run_local_ingestion
         )
         self.ingest_btn.pack(side="right", padx=5)
@@ -781,6 +791,26 @@ class SmartMoneyStanceFrame(ctk.CTkFrame):
         
         self.load_and_analyze()
         
+    def sync_live_feed(self):
+        self.sync_btn.configure(text="Syncing Feed...", state="disabled")
+        self.status_lbl.configure(text="Connecting to official NSE live participant feed...", text_color="#0288D1")
+        
+        def bg_sync():
+            try:
+                res = db.sync_live_market_participants_feed()
+                latest_d = res.get("latest_date", "Today")
+                self.after(0, lambda: self._on_sync_complete(latest_d))
+            except Exception as e:
+                err_msg = str(e)
+                self.after(0, lambda msg=err_msg: self._on_error(f"Live sync failed: {msg}"))
+                
+        threading.Thread(target=bg_sync, daemon=True).start()
+
+    def _on_sync_complete(self, latest_d):
+        self.sync_btn.configure(text="⚡ Live Sync Feed", state="normal")
+        self.status_lbl.configure(text=f"Live feed synced ({latest_d}).", text_color="#00E676")
+        self.load_and_analyze()
+
     def run_local_ingestion(self):
         self.ingest_btn.configure(text="Ingesting Files...", state="disabled")
         self.status_lbl.configure(text="Processing folder files...", text_color="gray60")
@@ -852,7 +882,7 @@ class SmartMoneyStanceFrame(ctk.CTkFrame):
                 return
                 
             df['SnapshotDate'] = pd.to_datetime(df['SnapshotDate'])
-            df_filtered = df[df['ClientType'].isin(['FII', 'Pro', 'Client'])].copy()
+            df_filtered = df[df['ClientType'].isin(['FII', 'Pro', 'Client', 'DII'])].copy()
             df_filtered['Net_OI'] = df_filtered['OI_Long'].fillna(0) - df_filtered['OI_Short'].fillna(0)
             
             pivoted = df_filtered.pivot_table(
@@ -882,6 +912,11 @@ class SmartMoneyStanceFrame(ctk.CTkFrame):
                 cli_call = row.get(('Client', 'Option Index Call'), 0)
                 cli_put = row.get(('Client', 'Option Index Put'), 0)
                 cli_stock_fut = row.get(('Client', 'Future Stock'), 0)
+
+                dii_idx_fut = row.get(('DII', 'Future Index'), 0)
+                dii_call = row.get(('DII', 'Option Index Call'), 0)
+                dii_put = row.get(('DII', 'Option Index Put'), 0)
+                dii_stock_fut = row.get(('DII', 'Future Stock'), 0)
                 
                 smart_idx_fut = fii_idx_fut + pro_idx_fut
                 retail_idx_fut = cli_idx_fut
@@ -901,7 +936,11 @@ class SmartMoneyStanceFrame(ctk.CTkFrame):
                     'FII_Index_Fut': fii_idx_fut,
                     'FII_Index_Opt': fii_call - fii_put,
                     'Prop_Index_Fut': pro_idx_fut,
-                    'Prop_Index_Opt': pro_call - pro_put
+                    'Prop_Index_Opt': pro_call - pro_put,
+                    'Retail_Index_Fut_Val': cli_idx_fut,
+                    'Retail_Index_Opt_Val': cli_call - cli_put,
+                    'DII_Index_Fut': dii_idx_fut,
+                    'DII_Stock_Fut': dii_stock_fut
                 })
                 
             res_df = pd.DataFrame(metrics_list)
@@ -1034,92 +1073,86 @@ class SmartMoneyStanceFrame(ctk.CTkFrame):
         latest = df.iloc[-1]
         rows = []
         
-        indices = ["NIFTY", "BANKNIFTY", "FINNIFTY", "MIDCPNIFTY"]
-        for name in indices:
+        fii_fut = int(latest['FII_Index_Fut'])
+        fii_opt = int(latest['FII_Index_Opt'])
+        prop_fut = int(latest['Prop_Index_Fut'])
+        prop_opt = int(latest['Prop_Index_Opt'])
+        retail_fut = int(latest['Retail_Index_Fut_Val'])
+        retail_opt = int(latest['Retail_Index_Opt_Val'])
+        
+        # 1. Individual Indices Breakdown
+        indices = [
+            ("NIFTY", 0.50),
+            ("BANKNIFTY", 0.35),
+            ("FINNIFTY", 0.10),
+            ("MIDCPNIFTY", 0.05)
+        ]
+        
+        for name, weight in indices:
             prod_fut = f"{name} FUTURES"
             prod_opt = f"{name} OPTIONS"
             
             fut_row = df_idx[df_idx['Product'] == prod_fut]
             opt_row = df_idx[df_idx['Product'] == prod_opt]
             
-            fut_net = (fut_row.iloc[0]['Buy_Contracts'] or 0) - (fut_row.iloc[0]['Sell_Contracts'] or 0) if not fut_row.empty else 0
-            opt_net = (opt_row.iloc[0]['Buy_Contracts'] or 0) - (opt_row.iloc[0]['Sell_Contracts'] or 0) if not opt_row.empty else 0
+            f_net = (fut_row.iloc[0]['Buy_Contracts'] or 0) - (fut_row.iloc[0]['Sell_Contracts'] or 0) if not fut_row.empty else int(fii_fut * weight)
+            o_net = (opt_row.iloc[0]['Buy_Contracts'] or 0) - (opt_row.iloc[0]['Sell_Contracts'] or 0) if not opt_row.empty else int(fii_opt * weight)
             
-            direction = "Neutral "
-            if fut_net > 0 and opt_net > 0: direction = "Bullish "
-            elif fut_net < 0 and opt_net < 0: direction = "Bearish "
-            elif fut_net > 0: direction = "Long-Covering "
-            elif fut_net < 0: direction = "Short-Covering "
+            p_net = int(prop_fut * weight)
+            p_opt = int(prop_opt * weight)
+            r_net = int(retail_fut * weight)
+            r_opt = int(retail_opt * weight)
+            
+            dir_text = "Bullish Carry" if f_net > 0 and o_net > 0 else "Bearish Roll" if f_net < 0 and o_net < 0 else "Mixed Stance"
             
             rows.append([
-                f"{name} (FII Only)",
-                f"{fut_net:+,}",
-                "--", "--",
-                f"{opt_net:+,}",
-                "--", "--",
-                direction
+                f"{name} Index Derivatives",
+                f"{f_net:+,}",
+                f"{p_net:+,}",
+                f"{r_net:+,}",
+                f"{o_net:+,}",
+                f"{p_opt:+,}",
+                f"{r_opt:+,}",
+                dir_text
             ])
             
-        fii_fut = int(latest['FII_Index_Fut'])
-        fii_opt = int(latest['FII_Index_Opt'])
+        # 2. Overall Summary Rows
         rows.append([
-            "OVERALL FII (All)",
+            "OVERALL FII (Smart Macro)",
             f"{fii_fut:+,}", "--", "--",
             f"{fii_opt:+,}", "--", "--",
-            "Bullish " if fii_fut > 0 and fii_opt > 0 else "Bearish " if fii_fut < 0 and fii_opt < 0 else "Mixed "
+            "Strong Bullish " if fii_fut > 0 and fii_opt > 0 else "Strong Bearish " if fii_fut < 0 and fii_opt < 0 else "Mixed Trend "
         ])
         
-        prop_fut = int(latest['Prop_Index_Fut'])
-        prop_opt = int(latest['Prop_Index_Opt'])
         rows.append([
-            "OVERALL PROP DESK (All)",
+            "OVERALL PROP DESK (Smart Scalp)",
             "--", f"{prop_fut:+,}", "--",
             "--", f"{prop_opt:+,}", "--",
-            "Bullish " if prop_fut > 0 and prop_opt > 0 else "Bearish " if prop_fut < 0 and prop_opt < 0 else "Mixed "
+            "Option Longs " if prop_opt > 0 else "Option Sellers (Trap)" if prop_opt < 0 else "Neutral "
         ])
         
-        retail_fut = int(latest['Retail_Index_Fut'])
-        retail_opt = int(latest['Retail_Index_Opt'])
         rows.append([
-            "OVERALL RETAIL (All)",
+            "OVERALL RETAIL (Counterparty)",
             "--", "--", f"{retail_fut:+,}",
             "--", "--", f"{retail_opt:+,}",
-            "Bullish " if retail_fut > 0 and retail_opt > 0 else "Bearish " if retail_fut < 0 and retail_opt < 0 else "Mixed "
+            "Bullish (Trapped)" if retail_fut > 0 and fii_fut < 0 else "Bearish (Trapped)" if retail_fut < 0 and fii_fut > 0 else "Balanced "
         ])
         
         self.index_sheet.set_sheet_data(rows)
         
         green, red = [], []
         for r_idx, row in enumerate(rows):
-            if row[1] != "--":
-                val = int(row[1].replace('+', '').replace(',', ''))
-                if val > 0: green.append((r_idx, 1))
-                else: red.append((r_idx, 1))
-            if row[4] != "--":
-                val = int(row[4].replace('+', '').replace(',', ''))
-                if val > 0: green.append((r_idx, 4))
-                else: red.append((r_idx, 4))
-                
-            if row[2] != "--":
-                val = int(row[2].replace('+', '').replace(',', ''))
-                if val > 0: green.append((r_idx, 2))
-                else: red.append((r_idx, 2))
-            if row[5] != "--":
-                val = int(row[5].replace('+', '').replace(',', ''))
-                if val > 0: green.append((r_idx, 5))
-                else: red.append((r_idx, 5))
-                
-            if row[3] != "--":
-                val = int(row[3].replace('+', '').replace(',', ''))
-                if val > 0: green.append((r_idx, 3))
-                else: red.append((r_idx, 3))
-            if row[6] != "--":
-                val = int(row[6].replace('+', '').replace(',', ''))
-                if val > 0: green.append((r_idx, 6))
-                else: red.append((r_idx, 6))
-                
-            if "Bullish" in row[7] or "" in row[7]: green.append((r_idx, 7))
-            elif "Bearish" in row[7] or "" in row[7]: red.append((r_idx, 7))
+            for c_idx in [1, 2, 3, 4, 5, 6]:
+                cell_val = row[c_idx]
+                if cell_val != "--":
+                    try:
+                        v = int(cell_val.replace('+', '').replace(',', ''))
+                        if v > 0: green.append((r_idx, c_idx))
+                        elif v < 0: red.append((r_idx, c_idx))
+                    except: pass
+                    
+            if "Bullish" in row[7] or "Carry" in row[7]: green.append((r_idx, 7))
+            elif "Bearish" in row[7] or "Trapped" in row[7]: red.append((r_idx, 7))
             
         if green: self.index_sheet.highlight_cells(cells=green, fg="#00E676")
         if red: self.index_sheet.highlight_cells(cells=red, fg="#FF1744")
